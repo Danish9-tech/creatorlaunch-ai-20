@@ -11,12 +11,11 @@ import { Sparkles, Loader2, Copy, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ToolConfig } from "@/config/tools";
+import { supabase } from "@/integrations/supabase/client";
 
 interface GenericToolPageProps {
   tool: ToolConfig;
 }
-
-const GENERATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-tool`;
 
 async function streamGenerate({
   tool,
