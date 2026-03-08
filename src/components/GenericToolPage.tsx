@@ -30,6 +30,11 @@ async function streamGenerate({
   onDone: () => void;
   onError: (msg: string) => void;
 }) {
+  if (!supabaseUrl || !supabaseKey) {
+    onError("Backend not configured. Please ensure Lovable Cloud is enabled.");
+    return;
+  }
+
   const url = `${supabaseUrl}/functions/v1/generate-tool`;
   
   const resp = await fetch(url, {
@@ -132,6 +137,24 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
     }
     setLoading(true);
     setOutput("");
+
+    // If backend isn't configured, fall back to mock output with simulated typing
+    if (!supabaseUrl || !supabaseKey) {
+      const mockText = tool.mockOutput;
+      let i = 0;
+      const interval = setInterval(() => {
+        i += 3;
+        if (i >= mockText.length) {
+          setOutput(mockText);
+          setLoading(false);
+          clearInterval(interval);
+          toast({ title: "Generated!", description: `${tool.title} results are ready.` });
+        } else {
+          setOutput(mockText.slice(0, i));
+        }
+      }, 10);
+      return;
+    }
 
     let accumulated = "";
 
