@@ -5,10 +5,10 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
 const stats = [
-  { label: "Products Created", value: 12, icon: Package, color: "from-primary to-secondary" },
-  { label: "Listings Generated", value: 34, icon: FileText, color: "from-accent to-primary" },
-  { label: "SEO Score Avg", value: 87, icon: Search, color: "from-highlight to-accent", suffix: "%" },
-  { label: "Trending Niches", value: 5, icon: TrendingUp, color: "from-secondary to-highlight" },
+  { label: "Products Created", value: 0, icon: Package, color: "from-primary to-secondary" },
+  { label: "Listings Generated", value: 0, icon: FileText, color: "from-accent to-primary" },
+  { label: "SEO Score Avg", value: 0, icon: Search, color: "from-highlight to-accent", suffix: "%" },
+  { label: "Trending Niches", value: 0, icon: TrendingUp, color: "from-secondary to-highlight" },
 ];
 
 const quickActions = [
