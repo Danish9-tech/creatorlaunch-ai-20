@@ -30,6 +30,11 @@ async function streamGenerate({
   onDone: () => void;
   onError: (msg: string) => void;
 }) {
+  if (!supabaseUrl || !supabaseKey) {
+    onError("Backend not configured. Please ensure Lovable Cloud is enabled.");
+    return;
+  }
+
   const url = `${supabaseUrl}/functions/v1/generate-tool`;
   
   const resp = await fetch(url, {
