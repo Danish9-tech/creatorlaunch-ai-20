@@ -27,6 +27,7 @@ import LaunchChecklist from "./pages/LaunchChecklist";
 import ExportTools from "./pages/ExportTools";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import ToolPage from "./pages/ToolPage";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/export-tools" element={<ExportTools />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/tool/:slug" element={<ToolPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
