@@ -1,15 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  console.warn("Supabase environment variables not found. Using fallback.");
-}
+export const supabaseUrl = SUPABASE_URL;
+export const supabaseKey = SUPABASE_PUBLISHABLE_KEY;
 
 export const supabase = createClient(
   SUPABASE_URL || "",
   SUPABASE_PUBLISHABLE_KEY || ""
 );
-
-export { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY };
