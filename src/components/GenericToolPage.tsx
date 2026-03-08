@@ -30,11 +30,17 @@ async function streamGenerate({
   onDone: () => void;
   onError: (msg: string) => void;
 }) {
-  const resp = await fetch(GENERATE_URL, {
+  // Use supabase functions invoke URL pattern
+  const supabaseUrl = (supabase as any).supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  
+  const url = `${supabaseUrl}/functions/v1/generate-tool`;
+  
+  const resp = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${supabaseKey}`,
     },
     body: JSON.stringify({
       toolTitle: tool.title,
