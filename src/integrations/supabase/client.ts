@@ -1,9 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL!;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!;
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+export const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
-export const supabaseUrl = SUPABASE_URL;
-export const supabaseKey = SUPABASE_KEY;
+let _supabase: SupabaseClient | null = null;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+export function getSupabase(): SupabaseClient | null {
+  if (_supabase) return _supabase;
+  if (supabaseUrl && supabaseKey) {
+    _supabase = createClient(supabaseUrl, supabaseKey);
+  }
+  return _supabase;
+}
