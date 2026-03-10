@@ -7,11 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Copy, Download } from "lucide-react";
+import { Sparkles, Loader2, Copy, Download, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ToolConfig } from "@/config/tools";
 import { supabaseUrl, supabaseKey } from "@/integrations/supabase/client";
+import { EmptyState } from "@/components/EmptyState";
+
+const STORAGE_KEY = "creatorlaunch_last_output";
 
 interface GenericToolPageProps {
   tool: ToolConfig;
@@ -31,12 +34,12 @@ async function streamGenerate({
   onError: (msg: string) => void;
 }) {
   if (!supabaseUrl || !supabaseKey) {
-    onError("Backend not configured. Please ensure Lovable Cloud is enabled.");
+    onError("Backend not configured. Using mock output.");
     return;
   }
 
   const url = `${supabaseUrl}/functions/v1/generate-tool`;
-  
+
   const resp = await fetch(url, {
     method: "POST",
     headers: {
@@ -82,10 +85,7 @@ async function streamGenerate({
       if (!line.startsWith("data: ")) continue;
 
       const jsonStr = line.slice(6).trim();
-      if (jsonStr === "[DONE]") {
-        streamDone = true;
-        break;
-      }
+      if (jsonStr === "[DONE]") { streamDone = true; break; }
 
       try {
         const parsed = JSON.parse(jsonStr);
@@ -98,7 +98,6 @@ async function streamGenerate({
     }
   }
 
-  // Flush remaining
   if (buffer.trim()) {
     for (let raw of buffer.split("\n")) {
       if (!raw) continue;
@@ -111,9 +110,7 @@ async function streamGenerate({
         const parsed = JSON.parse(jsonStr);
         const content = parsed.choices?.[0]?.delta?.content as string | undefined;
         if (content) onDelta(content);
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     }
   }
 
@@ -146,6 +143,7 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
         i += 3;
         if (i >= mockText.length) {
           setOutput(mockText);
+          localStorage.setItem(STORAGE_KEY, mockText);
           setLoading(false);
           clearInterval(interval);
           toast({ title: "Generated!", description: `${tool.title} results are ready.` });
@@ -168,14 +166,28 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
         },
         onDone: () => {
           setLoading(false);
+          localStorage.setItem(STORAGE_KEY, accumulated);
           toast({ title: "Generated!", description: `${tool.title} results are ready.` });
         },
         onError: (msg) => {
+          // Fallback to mock on error
           setLoading(false);
-          toast({ title: "Generation failed", description: msg, variant: "destructive" });
+          const mockText = tool.mockOutput;
+          let i = 0;
+          const interval = setInterval(() => {
+            i += 3;
+            if (i >= mockText.length) {
+              setOutput(mockText);
+              localStorage.setItem(STORAGE_KEY, mockText);
+              clearInterval(interval);
+              toast({ title: "Generated (demo)!", description: `${tool.title} demo results are ready.` });
+            } else {
+              setOutput(mockText.slice(0, i));
+            }
+          }, 10);
         },
       });
-    } catch (e) {
+    } catch {
       setLoading(false);
       toast({ title: "Error", description: "Failed to connect to AI. Please try again.", variant: "destructive" });
     }
@@ -186,8 +198,20 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
     toast({ title: "Copied!", description: "Content copied to clipboard." });
   };
 
-  const handleExport = (format: string) => {
-    toast({ title: `Export as ${format}`, description: "Export feature coming soon." });
+  const handleDownloadTxt = () => {
+    const blob = new Blob([output], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${tool.slug}-output.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Downloaded!", description: "File saved as TXT." });
+  };
+
+  const handleSaveHistory = () => {
+    localStorage.setItem(STORAGE_KEY, output);
+    toast({ title: "Saved!", description: "Output saved to history." });
   };
 
   return (
@@ -201,19 +225,10 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
                 <div key={field.name} className="space-y-2">
                   <Label>{field.label}</Label>
                   {field.type === "text" && (
-                    <Input
-                      placeholder={field.placeholder}
-                      value={values[field.name] || ""}
-                      onChange={(e) => handleChange(field.name, e.target.value)}
-                    />
+                    <Input placeholder={field.placeholder} value={values[field.name] || ""} onChange={(e) => handleChange(field.name, e.target.value)} />
                   )}
                   {field.type === "textarea" && (
-                    <Textarea
-                      className="min-h-[100px]"
-                      placeholder={field.placeholder}
-                      value={values[field.name] || ""}
-                      onChange={(e) => handleChange(field.name, e.target.value)}
-                    />
+                    <Textarea className="min-h-[100px]" placeholder={field.placeholder} value={values[field.name] || ""} onChange={(e) => handleChange(field.name, e.target.value)} />
                   )}
                   {field.type === "select" && (
                     <Select value={values[field.name] || ""} onValueChange={(v) => handleChange(field.name, v)}>
@@ -227,11 +242,7 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
                   )}
                 </div>
               ))}
-              <Button
-                className="w-full gradient-primary text-primary-foreground btn-animate"
-                onClick={handleGenerate}
-                disabled={loading}
-              >
+              <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate} disabled={loading}>
                 {loading ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> AI is generating...</>
                 ) : (
@@ -243,13 +254,8 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
 
           {/* Output Panel */}
           <AnimatePresence>
-            {(loading || output) && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-              >
+            {(loading || output) ? (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
                 <Card className="card-animate h-full">
                   <CardContent className="p-6">
                     {loading && !output ? (
@@ -262,17 +268,20 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
                           <h3 className="font-display font-semibold text-lg">
                             Results
                             {loading && <span className="ml-2 text-xs text-muted-foreground animate-pulse">● streaming...</span>}
                           </h3>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1.5 flex-wrap">
                             <Button variant="outline" size="sm" onClick={handleCopy} className="btn-animate" disabled={loading}>
                               <Copy className="h-3 w-3 mr-1" /> Copy
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleExport("PDF")} className="btn-animate" disabled={loading}>
-                              <Download className="h-3 w-3 mr-1" /> PDF
+                            <Button variant="outline" size="sm" onClick={handleDownloadTxt} className="btn-animate" disabled={loading}>
+                              <Download className="h-3 w-3 mr-1" /> TXT
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleSaveHistory} className="btn-animate" disabled={loading}>
+                              <Save className="h-3 w-3 mr-1" /> Save
                             </Button>
                           </div>
                         </div>
@@ -285,6 +294,14 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
                   </CardContent>
                 </Card>
               </motion.div>
+            ) : (
+              <div className="flex items-center">
+                <EmptyState
+                  icon={Sparkles}
+                  title="No results yet"
+                  description="Fill in the fields and click Generate to see AI-powered results."
+                />
+              </div>
             )}
           </AnimatePresence>
         </div>
