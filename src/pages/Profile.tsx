@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,16 +8,37 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { User, Camera } from "lucide-react";
+import { User, Camera, Package, FileText, Calendar } from "lucide-react";
 
 const Profile = () => {
   const [name, setName] = useState("Creator User");
   const [email, setEmail] = useState("creator@example.com");
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
+  const [productCount, setProductCount] = useState(0);
+
+  useEffect(() => {
+    try { setProductCount(JSON.parse(localStorage.getItem("creatorlaunch_products") || "[]").length); } catch {}
+  }, []);
+
+  const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
 
   const handleSave = () => {
     toast({ title: "✨ Profile updated!", description: "Your changes have been saved successfully." });
+  };
+
+  const handlePasswordChange = () => {
+    if (!currentPw || !newPw) {
+      toast({ title: "Missing fields", description: "Please fill both password fields.", variant: "destructive" });
+      return;
+    }
+    if (newPw.length < 6) {
+      toast({ title: "Too short", description: "Password must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Password updated!", description: "Your password has been changed. (Requires Lovable Cloud)" });
+    setCurrentPw("");
+    setNewPw("");
   };
 
   return (
@@ -30,7 +51,7 @@ const Profile = () => {
             <div className="flex items-center gap-4 mb-6">
               <div className="relative">
                 <Avatar className="w-20 h-20">
-                  <AvatarFallback className="gradient-primary text-primary-foreground font-display text-2xl">CU</AvatarFallback>
+                  <AvatarFallback className="gradient-primary text-primary-foreground font-display text-2xl">{initials}</AvatarFallback>
                 </Avatar>
                 <button className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-accent text-accent-foreground flex items-center justify-center">
                   <Camera className="w-3.5 h-3.5" />
@@ -49,11 +70,29 @@ const Profile = () => {
           </CardContent>
         </Card>
 
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Products", value: productCount, icon: Package },
+            { label: "Listings", value: 0, icon: FileText },
+            { label: "Member Since", value: "2026", icon: Calendar },
+          ].map(s => (
+            <Card key={s.label}>
+              <CardContent className="p-4 text-center">
+                <s.icon className="w-5 h-5 mx-auto text-muted-foreground mb-1" />
+                <p className="text-xl font-display font-bold">{s.value}</p>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
         <Card>
           <CardHeader><CardTitle className="text-base">Change Password</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2"><Label>Current Password</Label><Input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} /></div>
             <div className="space-y-2"><Label>New Password</Label><Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} /></div>
+            <Button variant="outline" onClick={handlePasswordChange}>Update Password</Button>
           </CardContent>
         </Card>
 

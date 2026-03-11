@@ -10,6 +10,9 @@ import SignUp from "./pages/SignUp";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import Products from "./pages/Products";
+import Analytics from "./pages/Analytics";
+import Onboarding from "./pages/Onboarding";
 import ProductCreator from "./pages/ProductCreator";
 import IdeaGenerator from "./pages/IdeaGenerator";
 import TrendFinder from "./pages/TrendFinder";
@@ -43,7 +46,10 @@ const App = () => (
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/product-creator" element={<ProductCreator />} />
           <Route path="/idea-generator" element={<IdeaGenerator />} />
           <Route path="/trend-finder" element={<TrendFinder />} />
