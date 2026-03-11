@@ -110,8 +110,8 @@ const Settings = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>OpenAI API Key</Label>
-              <Input type="password" placeholder="sk-..." defaultValue="" />
+                          <Label>Grok API Key</Label>
+                          <Input type="password" placeholder="xai-..." defaultValue="" />
               <p className="text-xs text-muted-foreground">Used for AI-powered tools. Keys are stored securely.</p>
             </div>
           </CardContent>
