@@ -52,7 +52,7 @@ async function streamGenerate({ tool, fields, onDelta, onDone, onError }: {
   onDelta: (text: string) => void; onDone: () => void; onError: (msg: string) => void;
 }) {
   if (!supabaseUrl || !supabaseKey) { onError("Backend not configured."); return; }
-  const resp = await fetch(`${supabaseUrl}/functions/v1/generate-tool`, {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/generate-content`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
     body: JSON.stringify({ toolTitle: tool.title, toolDescription: tool.description, category: tool.category, fields }),
