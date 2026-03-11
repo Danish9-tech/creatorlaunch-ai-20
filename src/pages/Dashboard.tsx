@@ -1,28 +1,56 @@
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FileText, Search, TrendingUp, Lightbulb, Megaphone, BarChart3, Clock } from "lucide-react";
+import { Package, FileText, DollarSign, Globe, Lightbulb, TrendingUp, Megaphone, BarChart3, Clock, CheckSquare, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "@/components/EmptyState";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-const stats = [
-  { label: "Products Created", value: 0, icon: Package, color: "from-primary to-secondary" },
-  { label: "Listings Generated", value: 0, icon: FileText, color: "from-accent to-primary" },
-  { label: "SEO Score Avg", value: 0, icon: Search, color: "from-highlight to-accent", suffix: "%" },
-  { label: "Trending Niches", value: 0, icon: TrendingUp, color: "from-secondary to-highlight" },
-];
+interface ActivityItem {
+  id: string;
+  action: string;
+  tool: string;
+  time: string;
+}
 
-const quickActions = [
-  { label: "Create Product", icon: Package, url: "/product-creator" },
-  { label: "Generate Ideas", icon: Lightbulb, url: "/idea-generator" },
-  { label: "Find Trends", icon: TrendingUp, url: "/trend-finder" },
-  { label: "Generate Listing", icon: FileText, url: "/listings-generator" },
-  { label: "Marketing Content", icon: Megaphone, url: "/marketing-generator" },
-  { label: "Analyze Competitors", icon: BarChart3, url: "/competitor-analyzer" },
-];
+function getProductCount(): number {
+  try { return JSON.parse(localStorage.getItem("creatorlaunch_products") || "[]").length; } catch { return 0; }
+}
+
+function getRecentActivity(): ActivityItem[] {
+  try {
+    const history = JSON.parse(localStorage.getItem("creatorlaunch_activity") || "[]") as ActivityItem[];
+    return history.slice(0, 5);
+  } catch { return []; }
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [productCount, setProductCount] = useState(0);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+
+  useEffect(() => {
+    setProductCount(getProductCount());
+    setActivity(getRecentActivity());
+  }, []);
+
+  const stats = [
+    { label: "Total Products", value: productCount, icon: Package, color: "from-primary to-secondary" },
+    { label: "Active Listings", value: 0, icon: FileText, color: "from-accent to-primary" },
+    { label: "Revenue This Month", value: "$0", icon: DollarSign, color: "from-highlight to-accent", isString: true },
+    { label: "Platforms Connected", value: 0, icon: Globe, color: "from-secondary to-highlight" },
+  ];
+
+  const quickActions = [
+    { label: "Create New Product", icon: Package, url: "/products" },
+    { label: "Generate Ideas", icon: Lightbulb, url: "/idea-generator" },
+    { label: "View Analytics", icon: BarChart3, url: "/analytics" },
+    { label: "Find Trends", icon: TrendingUp, url: "/trend-finder" },
+    { label: "Marketing Content", icon: Megaphone, url: "/marketing-generator" },
+    { label: "Launch Checklist", icon: CheckSquare, url: "/launch-checklist" },
+  ];
 
   return (
     <DashboardLayout>
@@ -42,7 +70,9 @@ const Dashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs sm:text-sm text-muted-foreground">{stat.label}</p>
-                      <p className="text-2xl sm:text-3xl font-display font-bold mt-1">{stat.value}{stat.suffix || ""}</p>
+                      <p className="text-2xl sm:text-3xl font-display font-bold mt-1">
+                        {stat.isString ? stat.value : stat.value}
+                      </p>
                     </div>
                     <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center`}>
                       <stat.icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
@@ -74,16 +104,42 @@ const Dashboard = () => {
 
         {/* Recent Activity */}
         <div>
-          <h2 className="text-xl font-display font-semibold mb-4">Recent Activity</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-display font-semibold">Recent Activity</h2>
+            {activity.length > 0 && (
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate("/analytics")}>
+                View All <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            )}
+          </div>
           <Card>
             <CardContent className="p-0">
-              <EmptyState
-                icon={Clock}
-                title="No recent activity"
-                description="Start using tools to see your generation history here."
-                actionLabel="Try a Tool"
-                actionUrl="/tool/niche-finder"
-              />
+              {activity.length === 0 ? (
+                <EmptyState
+                  icon={Clock}
+                  title="No recent activity"
+                  description="Start using tools to see your activity history here."
+                  actionLabel="Try a Tool"
+                  actionUrl="/tool/niche-finder"
+                />
+              ) : (
+                <div className="divide-y">
+                  {activity.map(item => (
+                    <div key={item.id} className="px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{item.action}</p>
+                          <p className="text-xs text-muted-foreground">{item.tool}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">{item.time}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
