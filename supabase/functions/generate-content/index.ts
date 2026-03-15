@@ -1,6 +1,7 @@
 // supabase/functions/generate-content/index.ts
-// CreatorLaunch AI - Grok (xAI) streaming Edge Function
+// CreatorLaunch AI - Grok (xAI) streaming Edge Function with credit checks
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,16 +41,62 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("authorization") || req.headers.get("x-forwarded-for") || "unknown";
-    const identifier = authHeader.substring(0, 50);
+    // ── 1. Auth: verify JWT and get user ──────────────────────────────────
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.replace("Bearer ", "").trim();
 
-    if (!checkRateLimit(identifier)) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(
+        JSON.stringify({ error: "Server misconfigured: missing SUPABASE_URL or SERVICE_ROLE_KEY" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Validate the user token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized. Please sign in." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── 2. Rate limit per user ────────────────────────────────────────────
+    if (!checkRateLimit(user.id)) {
       return new Response(
         JSON.stringify({ error: "Rate limit exceeded. Please wait 60 seconds." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } }
       );
     }
 
+    // ── 3. Credit pre-check ───────────────────────────────────────────────
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("credits, plan")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return new Response(
+        JSON.stringify({ error: "Profile not found. Please contact support." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (profile.credits < 1) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient credits. Please upgrade your plan to continue." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── 4. Parse request body ─────────────────────────────────────────────
     const { toolTitle, toolDescription, category, fields } = await req.json();
 
     if (!toolTitle || !fields || typeof fields !== "object") {
@@ -59,6 +106,7 @@ serve(async (req) => {
       );
     }
 
+    // ── 5. Grok API key check ─────────────────────────────────────────────
     const grokApiKey = Deno.env.get("GROK_API_KEY");
     if (!grokApiKey) {
       return new Response(
@@ -67,6 +115,7 @@ serve(async (req) => {
       );
     }
 
+    // ── 6. Build prompt ───────────────────────────────────────────────────
     const systemPrompt = systemPrompts[category] || systemPrompts.default;
     const fieldsSummary = Object.entries(fields)
       .filter(([, v]) => v && String(v).trim())
@@ -75,7 +124,8 @@ serve(async (req) => {
 
     const userMessage = `Tool: ${toolTitle}\nDescription: ${toolDescription || ""}\n\nUser Inputs:\n${fieldsSummary}\n\nProvide detailed, professional results. Use clear sections, bullet points, and actionable recommendations.`;
 
-    const response = await fetch("https://api.x.ai/v1/chat/completions", {
+    // ── 7. Stream from Grok ───────────────────────────────────────────────
+    const grokResponse = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -93,16 +143,50 @@ serve(async (req) => {
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: { message: "Unknown error" } }));
+    if (!grokResponse.ok) {
+      const errorData = await grokResponse.json().catch(() => ({ error: { message: "Unknown error" } }));
       console.error("Grok API error:", errorData);
       return new Response(
-        JSON.stringify({ error: errorData.error?.message || `Grok API error: ${response.status}` }),
-        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: errorData.error?.message || `Grok API error: ${grokResponse.status}` }),
+        { status: grokResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    return new Response(response.body, {
+    // ── 8. Stream response to client + decrement credits after done ───────
+    const encoder = new TextEncoder();
+    const reader = grokResponse.body!.getReader();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+
+          // Decrement credits after full stream completes
+          const { error: updateError } = await supabase
+            .from("profiles")
+            .update({
+              credits: profile.credits - 1,
+              credits_used: (profile as any).credits_used + 1,
+            })
+            .eq("id", user.id);
+
+          if (updateError) {
+            console.error("[generate-content] Failed to decrement credits:", updateError);
+          }
+        } catch (err) {
+          console.error("[generate-content] Stream error:", err);
+          controller.enqueue(encoder.encode("\ndata: [DONE]\n\n"));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
       headers: {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
@@ -110,6 +194,7 @@ serve(async (req) => {
         "Connection": "keep-alive",
       },
     });
+
   } catch (error) {
     console.error("Error in generate-content:", error);
     return new Response(
