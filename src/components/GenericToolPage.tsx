@@ -11,8 +11,9 @@ import { Sparkles, Loader2, Copy, Download, Save, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ToolConfig } from "@/config/tools";
-import { supabaseUrl, supabaseKey } from "@/integrations/supabase/client";
+import { supabaseUrl } from "@/integrations/supabase/client";
 import { EmptyState } from "@/components/EmptyState";
+import { useAuth } from "@/hooks/useAuth";
 
 const STORAGE_KEY = "creatorlaunch_last_output";
 const ACTIVITY_KEY = "creatorlaunch_activity";
@@ -47,43 +48,89 @@ interface GenericToolPageProps {
   tool: ToolConfig;
 }
 
-async function streamGenerate({ tool, fields, onDelta, onDone, onError }: {
-  tool: ToolConfig; fields: Record<string, string>;
-  onDelta: (text: string) => void; onDone: () => void; onError: (msg: string) => void;
+async function streamGenerate({ tool, fields, session, onDelta, onDone, onError }: {
+  tool: ToolConfig;
+  fields: Record<string, any>;
+  session: any;
+  onDelta: (text: string) => void;
+  onDone: () => void;
+  onError: (msg: string) => void;
 }) {
-  if (!supabaseUrl || !supabaseKey) { onError("Backend not configured."); return; }
-    const resp = await fetch(`${supabaseUrl}/functions/v1/generate-content`, {
+  if (!supabaseUrl) {
+    onError("Backend not configured.");
+    return;
+  }
+
+  const resp = await fetch(`${supabaseUrl}/functions/v1/generate-content`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session?.access_token || ""}`
+    },
     body: JSON.stringify({ toolTitle: tool.title, toolDescription: tool.description, category: tool.category, fields }),
   });
-  if (!resp.ok) { const err = await resp.json().catch(() => ({ error: "Request failed" })); onError(err.error || `Error ${resp.status}`); return; }
-  if (!resp.body) { onError("No response body"); return; }
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: "Request failed" }));
+    onError(err.error || `Error ${resp.status}`);
+    return;
+  }
+
+  if (!resp.body) {
+    onError("No response body");
+    return;
+  }
+
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let streamDone = false;
+
   while (!streamDone) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
+
     let newlineIndex: number;
-    while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+    while ((newlineIndex = buffer.indexOf("
+")) !== -1) {
       let line = buffer.slice(0, newlineIndex);
       buffer = buffer.slice(newlineIndex + 1);
+
       if (line.endsWith("\r")) line = line.slice(0, -1);
       if (line.startsWith(":") || line.trim() === "") continue;
-      if (!line.startsWith("data: ")) continue;
+      if (!line.startsWith("data: ")) {
+          // Some streams send raw text or JSON directly
+          try {
+             const p = JSON.parse(line);
+             const c = p.choices?.[0]?.delta?.content;
+             if (c) onDelta(c);
+          } catch {
+             // If not JSON, it might be a partial line or raw text
+          }
+          continue;
+      }
+
       const jsonStr = line.slice(6).trim();
-      if (jsonStr === "[DONE]") { streamDone = true; break; }
-      try { const p = JSON.parse(jsonStr); const c = p.choices?.[0]?.delta?.content; if (c) onDelta(c); }
-      catch { buffer = line + "\n" + buffer; break; }
+      if (jsonStr === "[DONE]") {
+        streamDone = true;
+        break;
+      }
+
+      try {
+        const p = JSON.parse(jsonStr);
+        const c = p.choices?.[0]?.delta?.content;
+        if (c) onDelta(c);
+      } catch {
+        // Handle potential split JSON across chunks
+      }
     }
   }
   onDone();
 }
 
 export function GenericToolPage({ tool }: GenericToolPageProps) {
+  const { session } = useAuth();
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState("");
@@ -93,36 +140,24 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
 
   const handleGenerate = async () => {
     const allFilled = tool.fields.every(f => values[f.name]?.trim());
-    if (!allFilled) { toast({ title: "Missing fields", description: "Please fill in all fields.", variant: "destructive" }); return; }
+    if (!allFilled) {
+      toast({ title: "Missing fields", description: "Please fill in all fields.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
     setOutput("");
-
-    const runMock = () => {
-      const mockText = tool.mockOutput;
-      let i = 0;
-      const interval = setInterval(() => {
-        i += 3;
-        if (i >= mockText.length) {
-          setOutput(mockText);
-          localStorage.setItem(STORAGE_KEY, mockText);
-          addActivity(tool.title);
-          saveToolHistory(tool.slug, mockText);
-          setLoading(false);
-          clearInterval(interval);
-          toast({ title: "Generated!", description: `${tool.title} results are ready.` });
-        } else {
-          setOutput(mockText.slice(0, i));
-        }
-      }, 10);
-    };
-
-    if (!supabaseUrl || !supabaseKey) { runMock(); return; }
 
     let accumulated = "";
     try {
       await streamGenerate({
-        tool, fields: values,
-        onDelta: chunk => { accumulated += chunk; setOutput(accumulated); },
+        tool,
+        fields: values,
+        session,
+        onDelta: chunk => {
+          accumulated += chunk;
+          setOutput(accumulated);
+        },
         onDone: () => {
           setLoading(false);
           localStorage.setItem(STORAGE_KEY, accumulated);
@@ -130,19 +165,33 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
           saveToolHistory(tool.slug, accumulated);
           toast({ title: "Generated!", description: `${tool.title} results are ready.` });
         },
-        onError: () => { runMock(); },
+        onError: (msg) => {
+          setLoading(false);
+          toast({ title: "Error", description: msg, variant: "destructive" });
+        },
       });
-    } catch { setLoading(false); toast({ title: "Error", description: "Failed to connect. Please try again.", variant: "destructive" }); }
+    } catch (err) {
+      setLoading(false);
+      toast({ title: "Error", description: "Failed to connect. Please try again.", variant: "destructive" });
+    }
   };
 
-  const handleCopy = () => { navigator.clipboard.writeText(output); toast({ title: "Copied!" }); };
+  const handleCopy = () => {
+    navigator.clipboard.writeText(output);
+    toast({ title: "Copied!" });
+  };
+
   const handleDownload = () => {
     const blob = new Blob([output], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `${tool.slug}-output.txt`; a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${tool.slug}-output.txt`;
+    a.click();
     URL.revokeObjectURL(url);
     toast({ title: "Downloaded!" });
   };
+
   const handleSave = () => {
     saveToolHistory(tool.slug, output);
     toast({ title: "Saved to history!" });
@@ -150,9 +199,10 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
 
   return (
     <DashboardLayout>
-      <ToolPageWrapper title={tool.title} description={tool.description} output={output}>
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card className="card-animate">
+      <ToolPageWrapper title={tool.title} description={tool.description}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Form */}
+          <Card className="card-animate h-fit">
             <CardContent className="p-6 space-y-4">
               {tool.fields.map(field => (
                 <div key={field.name} className="space-y-2">
