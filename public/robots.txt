@@ -1,8 +1,21 @@
+# Allow major crawlers on landing/public pages
 User-agent: Googlebot
 Allow: /
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /profile
+Disallow: /onboarding
+Disallow: /products
+Disallow: /analytics
 
 User-agent: Bingbot
 Allow: /
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /profile
+Disallow: /onboarding
+Disallow: /products
+Disallow: /analytics
 
 User-agent: Twitterbot
 Allow: /
@@ -10,5 +23,14 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+# Block all other bots from protected routes
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /profile
+Disallow: /onboarding
+Disallow: /products
+Disallow: /analytics
+
+Sitemap: https://creatorlaunch-ai-20.vercel.app/sitemap.xml
