@@ -63,9 +63,12 @@ export function AppSidebar() {
   const toolsActive = toolItems.some(t => location.pathname === t.url) ||
     location.pathname.startsWith("/tool/");
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     toast({ title: "Logged out", description: "You have been signed out." });
-    navigate("/");
+    navigate("/signin");
   };
 
   return (
