@@ -92,8 +92,7 @@ async function streamGenerate({ tool, fields, session, onDelta, onDone, onError 
     buffer += decoder.decode(value, { stream: true });
 
     let newlineIndex: number;
-    while ((newlineIndex = buffer.indexOf("
-")) !== -1) {
+    while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
       let line = buffer.slice(0, newlineIndex);
       buffer = buffer.slice(newlineIndex + 1);
 
