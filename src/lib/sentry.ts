@@ -30,9 +30,7 @@ export function initSentry() {
       replaysOnErrorSampleRate: 1.0, // Sample 100% of sessions with errors
       
       integrations: [
-        Sentry.browserTracingIntegration({
-          tracePropagationTargets: ["localhost", /^https:\/\/creatorlaunch\.ai/],
-        }),
+        Sentry.browserTracingIntegration(),
         Sentry.replayIntegration({
           maskAllText: false,
           blockAllMedia: false,
