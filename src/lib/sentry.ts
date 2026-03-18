@@ -30,11 +30,8 @@ export function initSentry() {
       replaysOnErrorSampleRate: 1.0, // Sample 100% of sessions with errors
       
       integrations: [
-        new Sentry.BrowserTracing({
-          // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
-          tracePropagationTargets: ["localhost", /^https:\/\/creatorlaunch\.ai/],
-        }),
-        new Sentry.Replay({
+        Sentry.browserTracingIntegration(),
+        Sentry.replayIntegration({
           maskAllText: false,
           blockAllMedia: false,
         }),
