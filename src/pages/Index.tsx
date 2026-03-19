@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Wand2, Sparkles, Zap, BarChart3, Globe, Shield, FileText, ArrowRight, Star, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -256,9 +257,9 @@ const Index = () => {
             <div>
               <h4 className="font-display font-semibold mb-3 text-sm">Legal</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="cursor-pointer hover:text-foreground transition-colors">Privacy Policy</li>
-                <li className="cursor-pointer hover:text-foreground transition-colors">Terms of Service</li>
-                <li className="cursor-pointer hover:text-foreground transition-colors">Contact Us</li>
+                <li className="cursor-pointer hover:text-foreground transition-colors"><Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
+                <li className="cursor-pointer hover:text-foreground transition-colors"><Link to="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
+                <li className="cursor-pointer hover:text-foreground transition-colors"><Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
               </ul>
             </div>
           </div>
