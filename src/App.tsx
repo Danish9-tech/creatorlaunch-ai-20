@@ -6,43 +6,44 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
-// ── Lazy-loaded pages (code splitting for performance) ──────────────────────
-const Index            = lazy(() => import("./pages/Index"));
-const NotFound         = lazy(() => import("./pages/NotFound"));
-const SignIn           = lazy(() => import("./pages/SignIn"));
-const SignUp           = lazy(() => import("./pages/SignUp"));
-const ForgotPassword   = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword    = lazy(() => import("./pages/ResetPassword"));
-const Dashboard        = lazy(() => import("./pages/Dashboard"));
-const Products         = lazy(() => import("./pages/Products"));
-const Analytics        = lazy(() => import("./pages/Analytics"));
-const Onboarding       = lazy(() => import("./pages/Onboarding"));
-const ProductCreator   = lazy(() => import("./pages/ProductCreator"));
-const IdeaGenerator    = lazy(() => import("./pages/IdeaGenerator"));
-const TrendFinder      = lazy(() => import("./pages/TrendFinder"));
-const ListingsGenerator  = lazy(() => import("./pages/ListingsGenerator"));
-const MarketingGenerator = lazy(() => import("./pages/MarketingGenerator"));
-const MockupsVideos    = lazy(() => import("./pages/MockupsVideos"));
-const SeoTools         = lazy(() => import("./pages/SeoTools"));
-const CompetitorAnalyzer = lazy(() => import("./pages/CompetitorAnalyzer"));
-const PricingOptimizer = lazy(() => import("./pages/PricingOptimizer"));
-const BundleBuilder    = lazy(() => import("./pages/BundleBuilder"));
-const LicenseGenerator = lazy(() => import("./pages/LicenseGenerator"));
-const AffiliateBuilder = lazy(() => import("./pages/AffiliateBuilder"));
-const ListingTranslator = lazy(() => import("./pages/ListingTranslator"));
-const LaunchChecklist  = lazy(() => import("./pages/LaunchChecklist"));
-const ExportTools      = lazy(() => import("./pages/ExportTools"));
-const Profile          = lazy(() => import("./pages/Profile"));
-const Settings         = lazy(() => import("./pages/Settings"));
-const ToolPage         = lazy(() => import("./pages/ToolPage"));
+// ── Lazy-loaded pages (code splitting for performance) ──────────────────────────────
+const Index               = lazy(() => import("./pages/Index"));
+const NotFound            = lazy(() => import("./pages/NotFound"));
+const SignIn              = lazy(() => import("./pages/SignIn"));
+const SignUp              = lazy(() => import("./pages/SignUp"));
+const ForgotPassword      = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword       = lazy(() => import("./pages/ResetPassword"));
+const Dashboard           = lazy(() => import("./pages/Dashboard"));
+const Products            = lazy(() => import("./pages/Products"));
+const Analytics           = lazy(() => import("./pages/Analytics"));
+const Onboarding          = lazy(() => import("./pages/Onboarding"));
+const ProductCreator      = lazy(() => import("./pages/ProductCreator"));
+const IdeaGenerator       = lazy(() => import("./pages/IdeaGenerator"));
+const TrendFinder         = lazy(() => import("./pages/TrendFinder"));
+const ListingsGenerator   = lazy(() => import("./pages/ListingsGenerator"));
+const MarketingGenerator  = lazy(() => import("./pages/MarketingGenerator"));
+const MockupsVideos       = lazy(() => import("./pages/MockupsVideos"));
+const SeoTools            = lazy(() => import("./pages/SeoTools"));
+const CompetitorAnalyzer  = lazy(() => import("./pages/CompetitorAnalyzer"));
+const PricingOptimizer    = lazy(() => import("./pages/PricingOptimizer"));
+const BundleBuilder       = lazy(() => import("./pages/BundleBuilder"));
+const LicenseGenerator    = lazy(() => import("./pages/LicenseGenerator"));
+const AffiliateBuilder    = lazy(() => import("./pages/AffiliateBuilder"));
+const ListingTranslator   = lazy(() => import("./pages/ListingTranslator"));
+const LaunchChecklist     = lazy(() => import("./pages/LaunchChecklist"));
+const ExportTools         = lazy(() => import("./pages/ExportTools"));
+const Profile             = lazy(() => import("./pages/Profile"));
+const Settings            = lazy(() => import("./pages/Settings"));
+const ToolPage            = lazy(() => import("./pages/ToolPage"));
+// Legal pages
+const PrivacyPolicy       = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService      = lazy(() => import("./pages/TermsOfService"));
+const Contact             = lazy(() => import("./pages/Contact"));
 
-// ── Loading fallback ─────────────────────────────────────────────────────────
+// ── Loading fallback ───────────────────────────────────────────────────────────
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen bg-background">
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-10 h-10 rounded-full gradient-primary animate-pulse" />
-      <p className="text-sm text-muted-foreground animate-pulse">Loading CreatorLaunch AI...</p>
-    </div>
+  <div className="flex items-center justify-center min-h-screen">
+    <p className="text-muted-foreground animate-pulse">Loading CreatorLaunch AI...</p>
   </div>
 );
 
@@ -70,12 +71,18 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
+            {/* Legal pages - public */}
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/contact" element={<Contact />} />
+
             {/* Protected routes — require login */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/products/new" element={<ProductCreator />} />
               <Route path="/analytics" element={<Analytics />} />
+              <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/product-creator" element={<ProductCreator />} />
               <Route path="/idea-generator" element={<IdeaGenerator />} />
               <Route path="/trend-finder" element={<TrendFinder />} />
@@ -93,7 +100,7 @@ const App = () => (
               <Route path="/export-tools" element={<ExportTools />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/tool/:slug" element={<ToolPage />} />
+              <Route path="/tool/:toolId" element={<ToolPage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
