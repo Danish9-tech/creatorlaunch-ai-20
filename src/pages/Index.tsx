@@ -263,7 +263,7 @@ const Index = () => {
             </div>
           </div>
           <div className="border-t border-border pt-6 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} CreatorLaunch AI. All rights reserved.
+            © {new Date().getFullYear()} CreatorWand AI. All rights reserved.
           </div>
         </div>
       </footer>
