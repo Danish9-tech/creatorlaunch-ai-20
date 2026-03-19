@@ -75,10 +75,10 @@ const Index = () => {
         </div>
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: "spring" }} className="mx-auto w-20 h-20 rounded-3xl gradient-primary flex items-center justify-center mb-8 glow-primary">
-            <Rocket className="w-10 h-10 text-primary-foreground" />
+            <Wand2 className="w-10 h-10 text-primary-foreground" />
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-4xl sm:text-5xl md:text-6xl font-display font-bold mb-6">
-            Creator<span className="text-gradient">Launch</span> AI
+            Creator<span className="text-gradient">Wand</span> AI
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.7 }} className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Create, optimize, market, and launch digital products across 7+ marketplaces — powered by AI.
