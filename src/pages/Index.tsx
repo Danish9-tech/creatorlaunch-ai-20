@@ -231,9 +231,9 @@ const Index = () => {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center">
-                  <Rocket className="w-3.5 h-3.5 text-primary-foreground" />
+                  <Wand2 className="w-3.5 h-3.5 text-primary-foreground" />
                 </div>
-                <span className="font-display font-bold">CreatorLaunch AI</span>
+                <span className="font-display font-bold">CreatorWand AI</span>
               </div>
               <p className="text-sm text-muted-foreground">AI-powered platform for digital product creators.</p>
             </div>
