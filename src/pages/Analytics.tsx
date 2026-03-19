@@ -3,7 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, TrendingUp, DollarSign, ShoppingCart } from "lucide-react";
 import { motion } from "framer-motion";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell
+} from "recharts";
 
 // Mock realistic data
 const last30Days = Array.from({ length: 30 }, (_, i) => {
@@ -40,13 +43,22 @@ const Analytics = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-display font-bold">Analytics</h1>
-          <p className="text-muted-foreground text-sm">Track your product performance across all platforms.</p>
-        </motion.div>
+        {/* Header with Demo Data badge */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Analytics</h1>
+            <p className="text-muted-foreground text-sm mt-1">Track your product performance across all platforms.</p>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <span className="inline-flex items-center rounded-full bg-yellow-100 border border-yellow-400 px-3 py-1 text-xs font-semibold text-yellow-800">
+              Demo Data
+            </span>
+            <span className="text-xs text-muted-foreground">Numbers shown are sample data, not real sales.</span>
+          </div>
+        </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: "Total Revenue", value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, change: "+14.2%" },
             { label: "Total Sales", value: totalSales.toString(), icon: ShoppingCart, change: "+8.7%" },
@@ -56,16 +68,12 @@ const Analytics = () => {
             <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
               <Card>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground">{s.label}</p>
-                      <p className="text-2xl font-display font-bold mt-1">{s.value}</p>
-                      {s.change && <span className="text-xs text-highlight font-medium">{s.change}</span>}
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                      <s.icon className="w-5 h-5 text-muted-foreground" />
-                    </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">{s.label}</span>
+                    <s.icon className="h-4 w-4 text-muted-foreground" />
                   </div>
+                  <div className="text-2xl font-bold">{s.value}</div>
+                  {s.change && <Badge className="mt-1 bg-green-100 text-green-700 border-green-300 text-xs">{s.change}</Badge>}
                 </CardContent>
               </Card>
             </motion.div>
@@ -74,38 +82,32 @@ const Analytics = () => {
 
         {/* Revenue Chart */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Revenue — Last 30 Days</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Revenue — Last 30 Days</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={last30Days}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(348, 100%, 65%)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(348, 100%, 65%)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(230, 20%, 90%)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval={4} />
-                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={4} />
+                <YAxis tickFormatter={(v) => `$${v}`} />
                 <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]} />
-                <Area type="monotone" dataKey="revenue" stroke="hsl(348, 100%, 65%)" fill="url(#colorRevenue)" strokeWidth={2} />
+                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.2)" />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Platform Performance */}
+        {/* Platform Performance */}
+        <div className="grid md:grid-cols-2 gap-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Revenue by Platform</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Revenue by Platform</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={240}>
+              <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={platformData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(230, 20%, 90%)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tickFormatter={(v) => `$${v}`} />
                   <Tooltip formatter={(v: number) => [`$${v}`, "Revenue"]} />
-                  <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
+                  <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
                     {platformData.map((entry, idx) => (
                       <Cell key={idx} fill={entry.color} />
                     ))}
@@ -115,30 +117,26 @@ const Analytics = () => {
             </CardContent>
           </Card>
 
-          {/* Platform Breakdown Pie */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Platform Share</CardTitle></CardHeader>
-            <CardContent className="flex items-center justify-center">
-              <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={platformData} dataKey="revenue" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={40}>
-                      {platformData.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => [`$${v}`, "Revenue"]} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-2 shrink-0">
-                  {platformData.map(p => (
-                    <div key={p.name} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
-                      <span>{p.name}</span>
-                      <span className="font-semibold ml-auto">${p.revenue}</span>
-                    </div>
-                  ))}
-                </div>
+            <CardHeader><CardTitle>Platform Share</CardTitle></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={platformData} dataKey="revenue" nameKey="name" cx="50%" cy="50%" outerRadius={70}>
+                    {platformData.map((entry, idx) => (
+                      <Cell key={idx} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [`$${v}`, "Revenue"]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-2 space-y-1">
+                {platformData.map((p) => (
+                  <div key={p.name} className="flex justify-between text-xs">
+                    <span>{p.name}</span>
+                    <span className="font-semibold">${p.revenue}</span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -146,27 +144,27 @@ const Analytics = () => {
 
         {/* Top Products */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Top Performing Products</CardTitle></CardHeader>
-          <CardContent className="p-0">
+          <CardHeader><CardTitle>Top Performing Products</CardTitle></CardHeader>
+          <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium text-muted-foreground">Product</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground">Platform</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Sales</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Revenue</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Trend</th>
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="pb-2">Product</th>
+                    <th className="pb-2">Platform</th>
+                    <th className="pb-2">Sales</th>
+                    <th className="pb-2">Revenue</th>
+                    <th className="pb-2">Trend</th>
                   </tr>
                 </thead>
                 <tbody>
                   {topProducts.map((p, i) => (
-                    <tr key={i} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                      <td className="p-3 font-medium">{p.name}</td>
-                      <td className="p-3"><Badge variant="secondary" className="text-xs">{p.platform}</Badge></td>
-                      <td className="p-3 text-right">{p.sales}</td>
-                      <td className="p-3 text-right font-semibold">{p.revenue}</td>
-                      <td className="p-3 text-right text-highlight font-medium">{p.trend}</td>
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="py-2 font-medium">{p.name}</td>
+                      <td className="py-2 text-muted-foreground">{p.platform}</td>
+                      <td className="py-2">{p.sales}</td>
+                      <td className="py-2">{p.revenue}</td>
+                      <td className="py-2 text-green-600 font-medium">{p.trend}</td>
                     </tr>
                   ))}
                 </tbody>
