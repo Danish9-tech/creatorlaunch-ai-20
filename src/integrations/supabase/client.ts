@@ -1,27 +1,25 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Support both naming conventions for the Supabase anon key
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://lpuoggdzqmlehclbhjfe.supabase.co";
-const SUPABASE_KEY =
+const SUPABASE_URL = 
+  import.meta.env.VITE_SUPABASE_URL || 
+  "https://lpuoggdzqmlehclbhjfe.supabase.co";
+
+const SUPABASE_KEY = 
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwdW9nZ2R6cW1sZWhjbGJoamZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MzkxNjEsImV4cCI6MjA4OTExNTE2MX0.2jzyCtHuOOm4dOYQ5Co4104Ao4oKmEhR7bxmm0BfLu0";
 
-export const supabaseUrl = SUPABASE_URL as string | undefined;
-export const supabaseKey = SUPABASE_KEY as string | undefined;
+export const supabaseUrl = SUPABASE_URL;
+export const supabaseKey = SUPABASE_KEY;
 
-// Only create client if env vars are available (avoids crash on missing URL)
-export const supabase =
-  SUPABASE_URL && SUPABASE_KEY
-    ? createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true,
-          storageKey: "cl-auth-token",
-        },
-      })
-    : null;
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storageKey: "cl-auth-token",
+  },
+});
 
 export type Json =
   | string
@@ -66,11 +64,11 @@ export type Database = {
           is_saved: boolean;
           created_at: string;
         };
-        Insert: Omit<
+        Insert: Omit
           Database["public"]["Tables"]["generations"]["Row"],
           "id" | "created_at"
         >;
-        Update: Partial<
+        Update: Partial
           Database["public"]["Tables"]["generations"]["Row"]
         >;
       };
