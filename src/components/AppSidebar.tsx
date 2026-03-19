@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, Lightbulb, TrendingUp, FileText, Megaphone,
   Image, Search, BarChart3, DollarSign, Layers, Shield, Users, Languages,
-  CheckSquare, Download, User, Settings, LogOut, Rocket,
+  CheckSquare, Download, User, Settings, LogOut, Wand2,
   ChevronDown, Wrench, PieChart,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
