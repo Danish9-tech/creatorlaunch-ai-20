@@ -1,4 +1,4 @@
-import { Rocket, Sparkles, Zap, BarChart3, Globe, Shield, FileText, ArrowRight, Star, Check } from "lucide-react";
+import { Wand2, Sparkles, Zap, BarChart3, Globe, Shield, FileText, ArrowRight, Star, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -27,7 +27,7 @@ const plans = [
 ];
 
 const testimonials = [
-  { name: "Sarah K.", role: "Etsy Seller", quote: "CreatorLaunch AI helped me 5x my Etsy sales in just 2 months. The listing generator alone saved me 10+ hours per week!", avatar: "SK" },
+  { name: "Sarah K.", role: "Etsy Seller", quote: "CreatorWand AI helped me 5x my Etsy sales in just 2 months. The listing generator alone saved me 10+ hours per week!", avatar: "SK" },
   { name: "Marcus T.", role: "Course Creator", quote: "The product creator wizard is incredible. I went from idea to published course in under a week. Game changer!", avatar: "MT" },
   { name: "Priya D.", role: "Template Designer", quote: "I use the competitor analyzer daily. Knowing exactly what's trending gives me an unfair advantage on Creative Market.", avatar: "PD" },
 ];
@@ -49,9 +49,9 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <Rocket className="w-4 h-4 text-primary-foreground" />
+              <Wand2 className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg">CreatorLaunch<span className="text-gradient"> AI</span></span>
+            <span className="font-display font-bold text-lg">CreatorWand<span className="text-gradient"> AI</span></span>
           </div>
           <div className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
@@ -75,10 +75,10 @@ const Index = () => {
         </div>
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: "spring" }} className="mx-auto w-20 h-20 rounded-3xl gradient-primary flex items-center justify-center mb-8 glow-primary">
-            <Rocket className="w-10 h-10 text-primary-foreground" />
+            <Wand2 className="w-10 h-10 text-primary-foreground" />
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-4xl sm:text-5xl md:text-6xl font-display font-bold mb-6">
-            Creator<span className="text-gradient">Launch</span> AI
+            Creator<span className="text-gradient">Wand</span> AI
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.7 }} className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Create, optimize, market, and launch digital products across 7+ marketplaces — powered by AI.
@@ -231,9 +231,9 @@ const Index = () => {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center">
-                  <Rocket className="w-3.5 h-3.5 text-primary-foreground" />
+                  <Wand2 className="w-3.5 h-3.5 text-primary-foreground" />
                 </div>
-                <span className="font-display font-bold">CreatorLaunch AI</span>
+                <span className="font-display font-bold">CreatorWand AI</span>
               </div>
               <p className="text-sm text-muted-foreground">AI-powered platform for digital product creators.</p>
             </div>
@@ -263,7 +263,7 @@ const Index = () => {
             </div>
           </div>
           <div className="border-t border-border pt-6 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} CreatorLaunch AI. All rights reserved.
+            © {new Date().getFullYear()} CreatorWand AI. All rights reserved.
           </div>
         </div>
       </footer>

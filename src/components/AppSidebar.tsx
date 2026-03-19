@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, Lightbulb, TrendingUp, FileText, Megaphone,
   Image, Search, BarChart3, DollarSign, Layers, Shield, Users, Languages,
-  CheckSquare, Download, User, Settings, LogOut, Rocket,
+  CheckSquare, Download, User, Settings, LogOut, Wand2,
   ChevronDown, Wrench, PieChart,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -76,11 +76,11 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
           <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-            <Rocket className="w-4 h-4 text-primary-foreground" />
+            <Wand2 className="w-4 h-4 text-primary-foreground" />
           </div>
           {!collapsed && (
             <span className="font-display font-bold text-lg text-sidebar-primary-foreground">
-              CreatorLaunch
+              CreatorWand
             </span>
           )}
         </div>
