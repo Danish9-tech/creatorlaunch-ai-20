@@ -27,7 +27,7 @@ const plans = [
 ];
 
 const testimonials = [
-  { name: "Sarah K.", role: "Etsy Seller", quote: "CreatorLaunch AI helped me 5x my Etsy sales in just 2 months. The listing generator alone saved me 10+ hours per week!", avatar: "SK" },
+  { name: "Sarah K.", role: "Etsy Seller", quote: "CreatorWand AI helped me 5x my Etsy sales in just 2 months. The listing generator alone saved me 10+ hours per week!", avatar: "SK" },
   { name: "Marcus T.", role: "Course Creator", quote: "The product creator wizard is incredible. I went from idea to published course in under a week. Game changer!", avatar: "MT" },
   { name: "Priya D.", role: "Template Designer", quote: "I use the competitor analyzer daily. Knowing exactly what's trending gives me an unfair advantage on Creative Market.", avatar: "PD" },
 ];
