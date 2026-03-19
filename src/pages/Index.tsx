@@ -49,9 +49,9 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-              <Rocket className="w-4 h-4 text-primary-foreground" />
+              <Wand2 className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg">CreatorLaunch<span className="text-gradient"> AI</span></span>
+            <span className="font-display font-bold text-lg">CreatorWand<span className="text-gradient"> AI</span></span>
           </div>
           <div className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
