@@ -1,4 +1,4 @@
-import { Rocket, Sparkles, Zap, BarChart3, Globe, Shield, FileText, ArrowRight, Star, Check } from "lucide-react";
+import { Wand2, Sparkles, Zap, BarChart3, Globe, Shield, FileText, ArrowRight, Star, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
