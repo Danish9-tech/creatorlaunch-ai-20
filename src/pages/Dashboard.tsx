@@ -59,23 +59,19 @@ const Dashboard = () => {
       setLoading(false);
     };
 
-    // Listen for auth state — fires immediately if already logged in
-    // Get session immediately — no waiting for auth events
-const { data: { subscription } } = supabase.auth.onAuthStateChange(
-  (_event, session) => {
-    if (session?.user) {
-      loadData(session.user.id);
-    } else {
-      setLoading(false);
-    }
-  }
-);
-return () => subscription.unsubscribe();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadData(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+  }, []);
 
   const stats = [
     { label: "Total Products", value: productCount, icon: Package, color: "from-primary to-secondary" },
     { label: "Active Listings", value: listingsCount, icon: FileText, color: "from-accent to-primary" },
-    { label: "Revenue This Month", value: "$0", icon: DollarSign, color: "from-highlight to-accent", isString: true },
+    { label: "Revenue This Month", value: "$0", icon: DollarSign, color: "from-highlight to-accent" },
     { label: "Platforms Connected", value: 0, icon: Globe, color: "from-secondary to-highlight" },
   ];
 
