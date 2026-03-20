@@ -5,7 +5,6 @@ import { Package, FileText, DollarSign, Globe, Lightbulb, TrendingUp, Megaphone,
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "@/components/EmptyState";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -27,23 +26,20 @@ const Dashboard = () => {
     const loadDashboardData = async () => {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user) {
-        // Fetch product count
         const { count: prodCount } = await supabase
           .from("products")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id);
         setProductCount(prodCount ?? 0);
 
-        // Fetch listings count
         const { count: listCount } = await supabase
           .from("listings")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id);
         setListingsCount(listCount ?? 0);
 
-        // Fetch recent activity logs
         const { data: logs } = await supabase
           .from("activity_logs")
           .select("*")
@@ -52,17 +48,22 @@ const Dashboard = () => {
           .limit(5);
 
         if (logs && logs.length > 0) {
-          setActivity(logs.map(log => ({
-            id: log.id,
-            action: log.action,
-            tool: log.tool_name || "Dashboard",
-            time: new Date(log.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
-          })));
+          setActivity(
+            logs.map((log) => ({
+              id: log.id,
+              action: log.action,
+              tool: log.entity_type || "Dashboard",
+              time: new Date(log.created_at).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            }))
+          );
         }
       }
       setLoading(false);
     };
-    
+
     loadDashboardData();
   }, []);
 
@@ -100,7 +101,7 @@ const Dashboard = () => {
                     <stat.icon className="h-5 w-5 text-muted-foreground" />
                     <div className={`h-2 w-2 rounded-full bg-gradient-to-r ${stat.color}`} />
                   </div>
-                  <div className="text-2xl font-bold">{stat.isString ? stat.value : stat.value}</div>
+                  <div className="text-2xl font-bold">{stat.value}</div>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
                 </CardContent>
               </Card>
@@ -116,7 +117,11 @@ const Dashboard = () => {
           <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {quickActions.map((action, i) => (
               <motion.div key={action.label} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}>
-                <Button variant="outline" className="w-full h-auto py-4 flex flex-col items-center gap-2" onClick={() => navigate(action.url)}>
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-4 flex flex-col items-center gap-2"
+                  onClick={() => navigate(action.url)}
+                >
                   <action.icon className="h-5 w-5" />
                   <span className="text-sm">{action.label}</span>
                 </Button>
@@ -142,4 +147,24 @@ const Dashboard = () => {
                 title="No recent activity yet"
                 description="Start using tools to see your activity here"
               />
-            )
+            ) : (
+              <div className="space-y-3">
+                {activity.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <div>
+                      <p className="text-sm font-medium">{item.action}</p>
+                      <p className="text-xs text-muted-foreground">{item.tool}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{item.time}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default Dashboard;
