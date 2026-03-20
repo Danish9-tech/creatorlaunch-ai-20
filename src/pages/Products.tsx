@@ -41,15 +41,16 @@ const Products = () => {
   const [form, setForm] = useState(emptyForm());
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUserId(session.user.id);
-        loadProducts(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-  }, []);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+  (_event, session) => {
+    if (session?.user) {
+      loadData(session.user.id);
+    } else {
+      setLoading(false);
+    }
+  }
+);
+return () => subscription.unsubscribe();
 
   const loadProducts = async (uid: string) => {
     setLoading(true);
