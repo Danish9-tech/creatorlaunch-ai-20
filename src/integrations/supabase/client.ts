@@ -17,7 +17,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    storageKey: "cl-auth-token",  // ← ADD THIS BACK
+    storage: window.localStorage,
+    storageKey: "cl-auth-token",
   },
 });
 
