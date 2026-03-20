@@ -19,18 +19,26 @@ const SignIn = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) {
-      toast({ title: "Error", description: "Supabase is not configured.", variant: "destructive" });
-      return;
-    }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
+      setLoading(false);
       toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
       return;
     }
+
+    // Wait for session to be fully persisted to localStorage before navigating
+    if (data.session) {
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+    }
+
     toast({ title: "Welcome back!", description: "You've signed in successfully." });
+    setLoading(false);
     navigate(from, { replace: true });
   };
 
