@@ -61,14 +61,16 @@ const Dashboard = () => {
 
     // Listen for auth state — fires immediately if already logged in
     // Get session immediately — no waiting for auth events
-supabase.auth.getSession().then(({ data: { session } }) => {
-  if (session?.user) {
-    loadData(session.user.id);
-  } else {
-    setLoading(false);
+const { data: { subscription } } = supabase.auth.onAuthStateChange(
+  (_event, session) => {
+    if (session?.user) {
+      loadData(session.user.id);
+    } else {
+      setLoading(false);
+    }
   }
-});
-  }, []);
+);
+return () => subscription.unsubscribe();
 
   const stats = [
     { label: "Total Products", value: productCount, icon: Package, color: "from-primary to-secondary" },
