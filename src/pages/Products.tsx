@@ -29,7 +29,11 @@ interface Product {
 }
 
 const emptyForm = () => ({
-  title: "", description: "", price: "", category: "", platforms: [] as string[],
+  title: "",
+  description: "",
+  price: "",
+  category: "",
+  platforms: [] as string[],
 });
 
 const Products = () => {
@@ -41,16 +45,15 @@ const Products = () => {
   const [form, setForm] = useState(emptyForm());
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-  (_event, session) => {
-    if (session?.user) {
-      loadData(session.user.id);
-    } else {
-      setLoading(false);
-    }
-  }
-);
-return () => subscription.unsubscribe();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+        loadProducts(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+  }, []);
 
   const loadProducts = async (uid: string) => {
     setLoading(true);
@@ -63,20 +66,27 @@ return () => subscription.unsubscribe();
     if (error) {
       toast({ title: "Error loading products", description: error.message, variant: "destructive" });
     } else {
-      setProducts((data || []).map(p => ({
-        id: p.id,
-        title: p.title || "",
-        description: p.description || "",
-        price: p.price?.toString() || "",
-        category: p.product_type || "",
-        platforms: p.tags || [],
-        createdAt: p.created_at,
-      })));
+      setProducts(
+        (data || []).map((p) => ({
+          id: p.id,
+          title: p.title || "",
+          description: p.description || "",
+          price: p.price?.toString() || "",
+          category: p.product_type || "",
+          platforms: p.tags || [],
+          createdAt: p.created_at,
+        }))
+      );
     }
     setLoading(false);
   };
 
-  const openNew = () => { setEditingId(null); setForm(emptyForm()); setDialogOpen(true); };
+  const openNew = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+    setDialogOpen(true);
+  };
+
   const openEdit = (p: Product) => {
     setEditingId(p.id);
     setForm({ title: p.title, description: p.description, price: p.price, category: p.category, platforms: p.platforms });
@@ -84,7 +94,10 @@ return () => subscription.unsubscribe();
   };
 
   const handleSave = async () => {
-    if (!form.title.trim()) { toast({ title: "Title required", variant: "destructive" }); return; }
+    if (!form.title.trim()) {
+      toast({ title: "Title required", variant: "destructive" });
+      return;
+    }
     if (!userId) return;
 
     if (editingId) {
@@ -106,17 +119,15 @@ return () => subscription.unsubscribe();
       }
       toast({ title: "Product updated!" });
     } else {
-      const { error } = await supabase
-        .from("products")
-        .insert({
-          user_id: userId,
-          title: form.title,
-          description: form.description,
-          price: parseFloat(form.price) || 0,
-          product_type: form.category,
-          tags: form.platforms,
-          status: "draft",
-        });
+      const { error } = await supabase.from("products").insert({
+        user_id: userId,
+        title: form.title,
+        description: form.description,
+        price: parseFloat(form.price) || 0,
+        product_type: form.category,
+        tags: form.platforms,
+        status: "draft",
+      });
 
       if (error) {
         toast({ title: "Error creating product", description: error.message, variant: "destructive" });
@@ -140,10 +151,10 @@ return () => subscription.unsubscribe();
   };
 
   const togglePlatform = (plat: string) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       platforms: prev.platforms.includes(plat)
-        ? prev.platforms.filter(p => p !== plat)
+        ? prev.platforms.filter((p) => p !== plat)
         : [...prev.platforms, plat],
     }));
   };
@@ -154,7 +165,9 @@ return () => subscription.unsubscribe();
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-display font-bold">My Products</h1>
-            <p className="text-muted-foreground text-sm">{products.length} product{products.length !== 1 ? "s" : ""}</p>
+            <p className="text-muted-foreground text-sm">
+              {products.length} product{products.length !== 1 ? "s" : ""}
+            </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -169,23 +182,41 @@ return () => subscription.unsubscribe();
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
                   <Label>Title</Label>
-                  <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Product name" />
+                  <Input
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="Product name"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Describe your product" className="min-h-[80px]" />
+                  <Textarea
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Describe your product"
+                    className="min-h-[80px]"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Price ($)</Label>
-                    <Input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="9.99" />
+                    <Input
+                      type="number"
+                      value={form.price}
+                      onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                      placeholder="9.99"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Category</Label>
-                    <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
                       <SelectContent>
-                        {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        {categories.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -193,7 +224,7 @@ return () => subscription.unsubscribe();
                 <div className="space-y-2">
                   <Label>Platforms</Label>
                   <div className="flex flex-wrap gap-2">
-                    {platforms.map(p => (
+                    {platforms.map((p) => (
                       <Badge
                         key={p}
                         variant={form.platforms.includes(p) ? "default" : "outline"}
@@ -207,7 +238,9 @@ return () => subscription.unsubscribe();
                 </div>
               </div>
               <DialogFooter>
-                <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
                 <Button className="gradient-primary text-primary-foreground" onClick={handleSave}>
                   {editingId ? "Update" : "Create"}
                 </Button>
@@ -255,7 +288,9 @@ return () => subscription.unsubscribe();
                         </AlertDialog>
                       </div>
                     </div>
-                    {p.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{p.description}</p>}
+                    {p.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{p.description}</p>
+                    )}
                     <div className="mt-auto space-y-2">
                       {p.price && (
                         <div className="flex items-center gap-1 text-sm font-semibold">
@@ -263,4 +298,27 @@ return () => subscription.unsubscribe();
                         </div>
                       )}
                       {p.category && (
-                        <Badge variant="second
+                        <Badge variant="secondary" className="text-xs">
+                          <Tag className="h-3 w-3 mr-1" />{p.category}
+                        </Badge>
+                      )}
+                      {p.platforms.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {p.platforms.map((pl) => (
+                            <Badge key={pl} variant="outline" className="text-[10px]">{pl}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default Products;
