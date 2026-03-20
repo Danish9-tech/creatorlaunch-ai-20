@@ -13,8 +13,8 @@ import { Package, Plus, Edit, Trash2, DollarSign, Tag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { EmptyState } from "@/components/EmptyState";
+import { supabase } from "@/integrations/supabase/client";
 
-const STORAGE_KEY = "creatorlaunch_products";
 const categories = ["Templates", "Ebooks", "Courses", "Presets", "Fonts", "Plugins", "Printables", "Other"];
 const platforms = ["Etsy", "Gumroad", "Shopify", "Amazon KDP", "Creative Market", "Payhip", "Teachable"];
 
@@ -28,50 +28,114 @@ interface Product {
   createdAt: string;
 }
 
-function getProducts(): Product[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch { return []; }
-}
-
-function saveProducts(products: Product[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-}
-
-const emptyProduct = (): Omit<Product, "id" | "createdAt"> => ({
-  title: "", description: "", price: "", category: "", platforms: [],
+const emptyForm = () => ({
+  title: "", description: "", price: "", category: "", platforms: [] as string[],
 });
 
 const Products = () => {
-  const [products, setProducts] = useState<Product[]>(getProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyProduct());
+  const [form, setForm] = useState(emptyForm());
 
-  useEffect(() => { saveProducts(products); }, [products]);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+        loadProducts(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+  }, []);
 
-  const openNew = () => { setEditingId(null); setForm(emptyProduct()); setDialogOpen(true); };
+  const loadProducts = async (uid: string) => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({ title: "Error loading products", description: error.message, variant: "destructive" });
+    } else {
+      setProducts((data || []).map(p => ({
+        id: p.id,
+        title: p.title || "",
+        description: p.description || "",
+        price: p.price?.toString() || "",
+        category: p.product_type || "",
+        platforms: p.tags || [],
+        createdAt: p.created_at,
+      })));
+    }
+    setLoading(false);
+  };
+
+  const openNew = () => { setEditingId(null); setForm(emptyForm()); setDialogOpen(true); };
   const openEdit = (p: Product) => {
     setEditingId(p.id);
     setForm({ title: p.title, description: p.description, price: p.price, category: p.category, platforms: p.platforms });
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.title.trim()) { toast({ title: "Title required", variant: "destructive" }); return; }
+    if (!userId) return;
+
     if (editingId) {
-      setProducts(prev => prev.map(p => p.id === editingId ? { ...p, ...form } : p));
+      const { error } = await supabase
+        .from("products")
+        .update({
+          title: form.title,
+          description: form.description,
+          price: parseFloat(form.price) || 0,
+          product_type: form.category,
+          tags: form.platforms,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingId);
+
+      if (error) {
+        toast({ title: "Error updating product", description: error.message, variant: "destructive" });
+        return;
+      }
       toast({ title: "Product updated!" });
     } else {
-      setProducts(prev => [...prev, { ...form, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
+      const { error } = await supabase
+        .from("products")
+        .insert({
+          user_id: userId,
+          title: form.title,
+          description: form.description,
+          price: parseFloat(form.price) || 0,
+          product_type: form.category,
+          tags: form.platforms,
+          status: "draft",
+        });
+
+      if (error) {
+        toast({ title: "Error creating product", description: error.message, variant: "destructive" });
+        return;
+      }
       toast({ title: "Product created!" });
     }
+
     setDialogOpen(false);
+    loadProducts(userId);
   };
 
-  const handleDelete = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error deleting product", description: error.message, variant: "destructive" });
+      return;
+    }
     toast({ title: "Product deleted" });
+    if (userId) loadProducts(userId);
   };
 
   const togglePlatform = (plat: string) => {
@@ -84,7 +148,7 @@ const Products = () => {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout loading={loading}>
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -198,23 +262,4 @@ const Products = () => {
                         </div>
                       )}
                       {p.category && (
-                        <Badge variant="secondary" className="text-xs"><Tag className="h-3 w-3 mr-1" />{p.category}</Badge>
-                      )}
-                      {p.platforms.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {p.platforms.map(pl => <Badge key={pl} variant="outline" className="text-[10px]">{pl}</Badge>)}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
-  );
-};
-
-export default Products;
+                        <Badge variant="second
