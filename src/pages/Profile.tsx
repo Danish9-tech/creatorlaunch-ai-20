@@ -39,7 +39,7 @@ const Profile = () => {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .maybeSingle();
+        .single();
 
       if (!error && data) {
         setName(data.full_name ?? "");
@@ -75,7 +75,7 @@ const Profile = () => {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Profile updated!", description: "Your changes have been saved successfully." });
+    toast({ title: "✨ Profile updated!", description: "Your changes have been saved successfully." });
   };
 
   const handlePasswordChange = async () => {
