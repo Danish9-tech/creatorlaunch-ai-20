@@ -23,48 +23,54 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+    const loadData = async (userId: string) => {
+      const { count: prodCount } = await supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+      setProductCount(prodCount ?? 0);
 
-      if (user) {
-        const { count: prodCount } = await supabase
-          .from("products")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        setProductCount(prodCount ?? 0);
+      const { count: listCount } = await supabase
+        .from("listings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+      setListingsCount(listCount ?? 0);
 
-        const { count: listCount } = await supabase
-          .from("listings")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        setListingsCount(listCount ?? 0);
+      const { data: logs } = await supabase
+        .from("activity_logs")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(5);
 
-        const { data: logs } = await supabase
-          .from("activity_logs")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(5);
-
-        if (logs && logs.length > 0) {
-          setActivity(
-            logs.map((log) => ({
-              id: log.id,
-              action: log.action,
-              tool: log.entity_type || "Dashboard",
-              time: new Date(log.created_at).toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            }))
-          );
-        }
+      if (logs && logs.length > 0) {
+        setActivity(
+          logs.map((log) => ({
+            id: log.id,
+            action: log.action,
+            tool: log.entity_type || "Dashboard",
+            time: new Date(log.created_at).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          }))
+        );
       }
       setLoading(false);
     };
 
-    loadDashboardData();
+    // Listen for auth state — fires immediately if already logged in
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session?.user) {
+          loadData(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const stats = [
@@ -91,7 +97,6 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Here's what's happening with your products.</p>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
@@ -109,7 +114,6 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
@@ -130,7 +134,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Recent Activity</CardTitle>
