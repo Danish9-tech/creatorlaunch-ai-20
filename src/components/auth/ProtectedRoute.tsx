@@ -3,38 +3,23 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
-/**
- * ProtectedRoute — wraps all auth-gated routes.
- * Redirects unauthenticated users to /signin.
- * Passes the Supabase session through context.
- */
 export function ProtectedRoute() {
   const location = useLocation();
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
   useEffect(() => {
-    // No Supabase configured — skip auth check (dev/demo mode)
-    if (!supabase) {
-      setSession(null);
-      return;
-    }
-
-    // Get the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    // Listen for auth state changes (login, logout, token refresh)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    // onAuthStateChange fires immediately with current session
+    // This is more reliable than getSession() after a fresh navigation
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Still loading — show branded spinner
+  // Still loading
   if (session === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -46,12 +31,7 @@ export function ProtectedRoute() {
     );
   }
 
-  // No Supabase configured — allow access (demo/local mode)
-  if (!supabase) {
-    return <Outlet />;
-  }
-
-  // Not logged in — redirect to sign in, preserve intended destination
+  // Not logged in — redirect to sign in
   if (!session) {
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
