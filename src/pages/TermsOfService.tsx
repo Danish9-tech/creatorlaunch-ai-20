@@ -1,54 +1,105 @@
+import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { supabase } from "@/integrations/supabase/client";
+
 const TermsOfService = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
-        <p className="text-muted-foreground mb-8">Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-        <div className="space-y-6 text-foreground">
-          <section>
-            <h2 className="text-xl font-semibold mb-2">1. Acceptance of Terms</h2>
-            <p className="text-muted-foreground">By accessing and using CreatorWand AI, you accept and agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our service.</p>
-          </section>
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+      setLoading(false);
+    };
+    checkAuth();
+  }, []);
 
-          <section>
-            <h2 className="text-xl font-semibold mb-2">2. Use of Service</h2>
-            <p className="text-muted-foreground">You may use CreatorWand AI only for lawful purposes and in accordance with these Terms. You agree not to use our service in any way that violates any applicable local, national, or international law or regulation.</p>
-          </section>
+  const content = (
+    <div className="max-w-4xl mx-auto px-6 py-16">
+      <h1 className="text-4xl font-bold mb-4">Terms of Service</h1>
+      <p className="text-muted-foreground mb-8">
+        Last updated: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+      </p>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-2">3. Account Responsibilities</h2>
-            <p className="text-muted-foreground">You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You agree to notify us immediately of any unauthorized use of your account.</p>
-          </section>
+      <div className="space-y-8 text-foreground">
+        <section>
+          <h2 className="text-2xl font-semibold mb-3">1. Acceptance of Terms</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            By accessing and using CreatorWand AI, you accept and agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this service. The materials and services provided are protected by applicable copyright and trademark law.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-2">4. Intellectual Property</h2>
-            <p className="text-muted-foreground">The service and its original content, features, and functionality are and will remain the exclusive property of CreatorWand AI. Content you create using our platform remains yours.</p>
-          </section>
+        <section>
+          <h2 className="text-2xl font-semibold mb-3">2. Use of Service</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            You may use CreatorWand AI only for lawful purposes and in accordance with these Terms. You agree not to use the service to violate any applicable local, state, national, or international law, transmit any harmful code or malware, attempt to gain unauthorized access to our systems, impersonate any person or entity, or interfere with other users' access to the service. You are responsible for maintaining the confidentiality of your account credentials.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-2">5. Limitation of Liability</h2>
-            <p className="text-muted-foreground">CreatorWand AI shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the service.</p>
-          </section>
+        <section>
+          <h2 className="text-2xl font-semibold mb-3">3. Payment Terms</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            Certain features of CreatorWand AI require a paid subscription. Subscription fees are billed in advance on a monthly or annual basis and are non-refundable except as required by law. We reserve the right to change our pricing with 30 days' notice to existing subscribers. If you fail to pay subscription fees, we may suspend or terminate your access to paid features.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-2">6. Termination</h2>
-            <p className="text-muted-foreground">We may terminate or suspend your account and access to the service at our sole discretion, without notice, for conduct that we believe violates these Terms or is harmful to other users, us, or third parties.</p>
-          </section>
+        <section>
+          <h2 className="text-2xl font-semibold mb-3">4. Intellectual Property</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            The CreatorWand AI platform, including its design, code, features, and content, is owned by us and protected by intellectual property laws. Content you create using our AI tools belongs to you, and you retain all rights to it. However, you grant us a limited license to store and process your content to provide the service.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-2">7. Changes to Terms</h2>
-            <p className="text-muted-foreground">We reserve the right to modify these terms at any time. We will provide notice of significant changes by updating the date at the top of this page.</p>
-          </section>
+        <section>
+          <h2 className="text-2xl font-semibold mb-3">5. Termination</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            We may terminate or suspend your account immediately, without prior notice or liability, for any reason, including if you breach these Terms. Upon termination, your right to use the service will immediately cease. You may also terminate your account at any time through your account settings. All provisions of these Terms that should reasonably survive termination will survive.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-semibold mb-2">8. Contact</h2>
-            <p className="text-muted-foreground">If you have any questions about these Terms, please visit our <a href="/contact" className="text-primary hover:underline">contact page</a>.</p>
-          </section>
-        </div>
+        <section>
+          <h2 className="text-2xl font-semibold mb-3">6. Limitation of Liability</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            CreatorWand AI is provided "as is" without warranties of any kind, either express or implied. We do not guarantee that the service will be uninterrupted, secure, or error-free. To the maximum extent permitted by law, we shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether direct or indirect, or any loss of data, use, goodwill, or other intangible losses resulting from your use of the service.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-semibold mb-3">7. Changes to Terms</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            We reserve the right to modify or replace these Terms at any time at our sole discretion. We will provide notice of material changes by updating the "Last updated" date at the top of this page and, for significant changes, by sending an email to registered users. Your continued use of the service after changes constitutes acceptance of the new Terms.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-semibold mb-3">8. Contact Information</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            If you have questions about these Terms, please contact us at{" "}
+            <a href="mailto:support@creatorwand.ai" className="text-primary hover:underline">
+              support@creatorwand.ai
+            </a>
+            {" "}or visit our{" "}
+            <a href="/contact" className="text-primary hover:underline">
+              contact page
+            </a>.
+          </p>
+        </section>
       </div>
     </div>
   );
+
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">
+      <p className="text-muted-foreground">Loading...</p>
+    </div>;
+  }
+
+  if (isLoggedIn) {
+    return <DashboardLayout>{content}</DashboardLayout>;
+  }
+
+  return <div className="min-h-screen bg-background">{content}</div>;
 };
 
 export default TermsOfService;
