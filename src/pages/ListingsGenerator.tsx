@@ -77,7 +77,7 @@ const ListingsGenerator = () => {
               </Card>
               <div className="grid md:grid-cols-2 gap-4">
                 <Card>
-                  <CardHeader><CardTitle className="text-base">Tags (13)</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="text-base">Tags</CardTitle></CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {result.tags?.split(",").map((tag: string, i: number) => (
@@ -91,7 +91,7 @@ const ListingsGenerator = () => {
                   <CardContent><p className="text-sm">{result.pricingStrategy}</p></CardContent>
                 </Card>
                 <Card>
-                  <CardHeader><CardTitle className="text-base">Target Audience</CardTitle></CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="text-base">Target Audience</CardTitle></CardHeader>
                   <CardContent><p className="text-sm">{result.targetAudience}</p></CardContent>
                 </Card>
                 <Card>
@@ -99,6 +99,10 @@ const ListingsGenerator = () => {
                   <CardContent><p className="text-sm">{result.seoKeywords}</p></CardContent>
                 </Card>
               </div>
+              <Card>
+                <CardHeader><CardTitle className="text-base">Unique Angle</CardTitle></CardHeader>
+                <CardContent><p className="text-sm">{result.uniqueAngle}</p></CardContent>
+              </Card>
             </div>
           )}
         </div>
