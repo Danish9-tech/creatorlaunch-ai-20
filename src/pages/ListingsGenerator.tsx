@@ -13,12 +13,11 @@ import { toast } from "@/hooks/use-toast";
 const ListingsGenerator = () => {
   const [product, setProduct] = useState("");
   const [platform, setPlatform] = useState("");
-  const [niche, setNiche] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
   const handleGenerate = async () => {
-    if (!product || !platform || !niche) {
+    if (!product || !platform) {
       toast({ title: "Please fill in all fields", variant: "destructive" });
       return;
     }
@@ -26,7 +25,7 @@ const ListingsGenerator = () => {
     setResult(null);
     try {
       const { data, error } = await supabase.functions.invoke("ai-generate", {
-        body: { tool: "listings-generator", inputs: { product, platform, niche } },
+        body: { tool: "listings-generator", inputs: { product, platform } },
       });
       if (error) throw error;
       setResult(data?.result);
@@ -39,14 +38,14 @@ const ListingsGenerator = () => {
 
   return (
     <DashboardLayout>
-      <ToolPageWrapper title="Listings Generator" description="Generate optimized product listings for any platform.">
+      <ToolPageWrapper title="Listings Generator" description="Generate a complete high-converting product listing instantly.">
         <div className="space-y-6">
           <Card>
             <CardContent className="p-6 space-y-4">
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Product Name</Label>
-                  <Input placeholder="e.g., Budget Planner Template" value={product} onChange={(e) => setProduct(e.target.value)} />
+                  <Input placeholder="e.g., Budget Planner Spreadsheet" value={product} onChange={(e) => setProduct(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Platform</Label>
@@ -59,13 +58,9 @@ const ListingsGenerator = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Niche</Label>
-                  <Input placeholder="e.g., Personal Finance" value={niche} onChange={(e) => setNiche(e.target.value)} />
-                </div>
               </div>
               <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate} disabled={loading}>
-                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate Listing</>}
+                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating Full Listing...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate Complete Listing</>}
               </Button>
             </CardContent>
           </Card>
@@ -73,23 +68,37 @@ const ListingsGenerator = () => {
           {result && (
             <div className="space-y-4">
               <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4" /> Title</CardTitle></CardHeader>
-                <CardContent><p className="font-semibold">{result.title}</p></CardContent>
+                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4 text-primary" />SEO Title</CardTitle></CardHeader>
+                <CardContent><p className="font-semibold text-lg">{result.title}</p></CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle>Description</CardTitle></CardHeader>
-                <CardContent><p className="text-sm whitespace-pre-wrap">{result.description}</p></CardContent>
+                <CardHeader><CardTitle>Full Description</CardTitle></CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{result.description}</p></CardContent>
               </Card>
-              <Card>
-                <CardHeader><CardTitle>Tags</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {result.tags?.split(",").map((tag: string, i: number) => (
-                      <span key={i} className="px-2 py-1 bg-muted rounded-md text-xs">{tag.trim()}</span>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Tags (13)</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {result.tags?.split(",").map((tag: string, i: number) => (
+                        <span key={i} className="px-2 py-1 bg-muted rounded-md text-xs">{tag.trim()}</span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Pricing Strategy</CardTitle></CardHeader>
+                  <CardContent><p className="text-sm">{result.pricingStrategy}</p></CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Target Audience</CardTitle></CardTitle></CardHeader>
+                  <CardContent><p className="text-sm">{result.targetAudience}</p></CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle className="text-base">SEO Keywords</CardTitle></CardHeader>
+                  <CardContent><p className="text-sm">{result.seoKeywords}</p></CardContent>
+                </Card>
+              </div>
             </div>
           )}
         </div>
