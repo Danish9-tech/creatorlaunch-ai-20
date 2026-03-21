@@ -5,66 +5,90 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Mail, MessageSquare } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Megaphone, Sparkles, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const MarketingGenerator = () => {
-  const [productName, setProductName] = useState("");
-  const [generated, setGenerated] = useState(false);
-  const [output, setOutput] = useState("");
+  const [product, setProduct] = useState("");
+  const [audience, setAudience] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
 
-  const handleGenerate = () => {
-    setOutput(`🚀 ${productName} is LIVE!\n\nTransform your workflow with ${productName}. Get it now at a special launch price!\n\n#digitalproducts #launch`);
-    setGenerated(true);
+  const handleGenerate = async () => {
+    if (!product || !audience || !platform) {
+      toast({ title: "Please fill in all fields", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    setResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-generate", {
+        body: { tool: "marketing-generator", inputs: { product, audience, platform } },
+      });
+      if (error) throw error;
+      setResult(data?.result);
+    } catch (err: any) {
+      toast({ title: "Generation failed", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const sections = result ? [
+    { title: "Headline", content: result.headline },
+    { title: "Email Subject Line", content: result.emailSubject },
+    { title: "Instagram Caption", content: result.instagramCaption },
+    { title: "Twitter / X Post", content: result.twitterPost },
+    { title: "Pinterest Description", content: result.pinterestDescription },
+  ] : [];
 
   return (
     <DashboardLayout>
-      <ToolPageWrapper title="Marketing Generator" description="Generate marketing content for all channels." output={output}>
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <div className="space-y-2"><Label>Product Name</Label><Input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Your product name" /></div>
-            <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate}>
-              <Sparkles className="w-4 h-4 mr-2" /> Generate Content
-            </Button>
-          </CardContent>
-        </Card>
-
-        {generated && (
-          <Card className="mt-6 card-animate">
-            <CardHeader><CardTitle>Marketing Content</CardTitle></CardHeader>
-            <CardContent>
-              <Tabs defaultValue="social">
-                <TabsList>
-                  <TabsTrigger value="social"><MessageSquare className="w-4 h-4 mr-1" /> Social</TabsTrigger>
-                  <TabsTrigger value="email"><Mail className="w-4 h-4 mr-1" /> Email</TabsTrigger>
-                  <TabsTrigger value="dm">DM Scripts</TabsTrigger>
-                </TabsList>
-                <TabsContent value="social" className="space-y-3 mt-4">
-                  {["Facebook", "Instagram", "TikTok", "Pinterest", "Twitter/X"].map((p) => (
-                    <div key={p} className="p-3 bg-muted rounded-lg">
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">{p}</p>
-                      <p className="text-sm">{output}</p>
-                    </div>
-                  ))}
-                </TabsContent>
-                <TabsContent value="email" className="space-y-3 mt-4">
-                  {["Launch Email", "Follow-up", "Discount", "Abandoned Cart"].map((e) => (
-                    <div key={e} className="p-3 bg-muted rounded-lg">
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">{e}</p>
-                      <p className="text-sm">Subject: {productName} — {e}!</p>
-                    </div>
-                  ))}
-                </TabsContent>
-                <TabsContent value="dm" className="mt-4">
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-sm">Hey! I just launched {productName} and I think it'd be perfect for you...</p>
-                  </div>
-                </TabsContent>
-              </Tabs>
+      <ToolPageWrapper title="Marketing Generator" description="Generate marketing copy for all your channels.">
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Product Name</Label>
+                  <Input placeholder="e.g., Social Media Templates" value={product} onChange={(e) => setProduct(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Target Audience</Label>
+                  <Input placeholder="e.g., Small business owners" value={audience} onChange={(e) => setAudience(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Primary Platform</Label>
+                  <Select value={platform} onValueChange={setPlatform}>
+                    <SelectTrigger><SelectValue placeholder="Select platform" /></SelectTrigger>
+                    <SelectContent>
+                      {["Instagram", "Twitter/X", "Pinterest", "Facebook", "TikTok", "Email"].map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate} disabled={loading}>
+                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate Marketing Copy</>}
+              </Button>
             </CardContent>
           </Card>
-        )}
+
+          {sections.length > 0 && (
+            <div className="grid md:grid-cols-2 gap-4">
+              {sections.map((s, i) => (
+                <Card key={i}>
+                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Megaphone className="w-4 h-4" />{s.title}</CardTitle></CardHeader>
+                  <CardContent><p className="text-sm whitespace-pre-wrap">{s.content}</p></CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </ToolPageWrapper>
     </DashboardLayout>
   );
