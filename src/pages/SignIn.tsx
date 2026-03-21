@@ -15,26 +15,19 @@ const SignIn = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
+  const from = (location.state as any)?.from?.pathname || "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-
     setLoading(false);
-
     if (error) {
       toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
       return;
     }
-
     toast({ title: "Welcome back!" });
-
-    setTimeout(() => {
-      navigate(from, { replace: true });
-    }, 500);
+    setTimeout(() => navigate(from, { replace: true }), 500);
   };
 
   return (
@@ -51,3 +44,29 @@ const SignIn = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
+                </div>
+                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              </div>
+              <Button type="submit" disabled={loading} className="w-full gradient-primary text-primary-foreground btn-animate font-display font-semibold">
+                {loading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              Don't have an account?{" "}
+              <Link to="/signup" className="text-primary hover:underline font-medium">Sign Up</Link>
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  );
+};
+
+export default SignIn;
