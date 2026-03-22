@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Sparkles, Loader2 } from "lucide-react";
+import { FileText, Sparkles, Loader2, Tag, DollarSign, Users, Search, Image, Shield, CheckSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -38,14 +38,14 @@ const ListingsGenerator = () => {
 
   return (
     <DashboardLayout>
-      <ToolPageWrapper title="Listings Generator" description="Generate a complete high-converting product listing instantly.">
+      <ToolPageWrapper title="Listings Generator" description="Generate a complete professional product listing instantly.">
         <div className="space-y-6">
           <Card>
             <CardContent className="p-6 space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Product Name</Label>
-                  <Input placeholder="e.g., Budget Planner Spreadsheet" value={product} onChange={(e) => setProduct(e.target.value)} />
+                  <Input placeholder="e.g., n8n Automation Templates Bundle" value={product} onChange={(e) => setProduct(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Platform</Label>
@@ -60,48 +60,79 @@ const ListingsGenerator = () => {
                 </div>
               </div>
               <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate} disabled={loading}>
-                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating Full Listing...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate Complete Listing</>}
+                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating Complete Listing...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate Complete Listing</>}
               </Button>
             </CardContent>
           </Card>
 
           {result && (
             <div className="space-y-4">
-              <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4 text-primary" />SEO Title</CardTitle></CardHeader>
-                <CardContent><p className="font-semibold text-lg">{result.title}</p></CardContent>
+              <Card className="border-primary">
+                <CardHeader><CardTitle className="flex items-center gap-2 text-primary"><FileText className="w-5 h-5" />SEO Title</CardTitle></CardHeader>
+                <CardContent><p className="font-bold text-xl">{result.title}</p></CardContent>
               </Card>
+
               <Card>
-                <CardHeader><CardTitle>Full Description</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4" />Category</CardTitle></CardHeader>
+                <CardContent><p className="text-sm">{result.category}</p></CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4" />Full Description</CardTitle></CardHeader>
                 <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{result.description}</p></CardContent>
               </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Tag className="w-4 h-4" />Tags (13)</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {result.tags?.split(",").map((tag: string, i: number) => (
+                      <span key={i} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">{tag.trim()}</span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="w-4 h-4" />Pricing Options</CardTitle></CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap">{result.pricingOptions}</p></CardContent>
+              </Card>
+
               <div className="grid md:grid-cols-2 gap-4">
                 <Card>
-                  <CardHeader><CardTitle className="text-base">Tags</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Search className="w-4 h-4" />SEO Keywords</CardTitle></CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {result.tags?.split(",").map((tag: string, i: number) => (
-                        <span key={i} className="px-2 py-1 bg-muted rounded-md text-xs">{tag.trim()}</span>
+                      {result.seoKeywords?.split(",").map((kw: string, i: number) => (
+                        <span key={i} className="px-2 py-1 bg-muted rounded-md text-xs">{kw.trim()}</span>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader><CardTitle className="text-base">Pricing Strategy</CardTitle></CardHeader>
-                  <CardContent><p className="text-sm">{result.pricingStrategy}</p></CardContent>
-                </Card>
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Target Audience</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Users className="w-4 h-4" />Target Audience</CardTitle></CardHeader>
                   <CardContent><p className="text-sm">{result.targetAudience}</p></CardContent>
                 </Card>
-                <Card>
-                  <CardHeader><CardTitle className="text-base">SEO Keywords</CardTitle></CardHeader>
-                  <CardContent><p className="text-sm">{result.seoKeywords}</p></CardContent>
-                </Card>
               </div>
+
               <Card>
-                <CardHeader><CardTitle className="text-base">Unique Angle</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Image className="w-4 h-4" />Product Image Ideas (7)</CardTitle></CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap">{result.imageIdeas}</p></CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="w-4 h-4" />Policies</CardTitle></CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap">{result.policies}</p></CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4" />Unique Angle</CardTitle></CardHeader>
                 <CardContent><p className="text-sm">{result.uniqueAngle}</p></CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><CheckSquare className="w-4 h-4" />Publishing Checklist</CardTitle></CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap">{result.publishingChecklist}</p></CardContent>
               </Card>
             </div>
           )}
