@@ -42,11 +42,15 @@ function saveToolHistory(slug: string, output: string) {
   } catch {}
 }
 
+function stripHtml(str: string): string {
+  return str.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ").trim();
+}
+
 function formatOutput(result: any): string {
   if (!result) return "";
-  if (typeof result === "string") return result;
-  if (result.output) return result.output;
-  if (result.text) return result.text;
+  if (typeof result === "string") return stripHtml(result);
+  if (result.output) return stripHtml(result.output);
+  if (result.text) return stripHtml(result.text);
   if (Array.isArray(result)) {
     return result.map((item: any, i: number) => {
       const num = `\n${"━".repeat(40)}\n📌 ITEM ${i + 1}\n${"━".repeat(40)}`;
