@@ -11,11 +11,9 @@ import { Sparkles, Loader2, Copy, Download, Save, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ToolConfig } from "@/config/tools";
-import { supabaseUrl } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { EmptyState } from "@/components/EmptyState";
-import { useAuth } from "@/hooks/useAuth";
 
-const STORAGE_KEY = "creatorlaunch_last_output";
 const ACTIVITY_KEY = "creatorlaunch_activity";
 const HISTORY_KEY = "creatorlaunch_tool_history";
 
@@ -44,98 +42,41 @@ function saveToolHistory(slug: string, output: string) {
   } catch {}
 }
 
+function formatOutput(result: any): string {
+  if (!result) return "";
+  if (typeof result === "string") return result;
+  if (result.output) return result.output;
+  if (result.text) return result.text;
+  if (Array.isArray(result)) {
+    return result.map((item: any, i: number) => {
+      const num = `\n${"━".repeat(40)}\n📌 ITEM ${i + 1}\n${"━".repeat(40)}`;
+      const fields = Object.entries(item)
+        .map(([k, v]) => `\n${k.replace(/([A-Z])/g, " $1").toUpperCase()}:\n${v}`)
+        .join("\n");
+      return num + fields;
+    }).join("\n");
+  }
+  return Object.entries(result)
+    .map(([k, v]) => {
+      const label = k.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
+      return `\n━━━ ${label.toUpperCase()} ━━━\n${v}`;
+    })
+    .join("\n")
+    .trim();
+}
+
 interface GenericToolPageProps {
   tool: ToolConfig;
 }
 
-async function streamGenerate({ tool, fields, session, onDelta, onDone, onError }: {
-  tool: ToolConfig;
-  fields: Record<string, any>;
-  session: any;
-  onDelta: (text: string) => void;
-  onDone: () => void;
-  onError: (msg: string) => void;
-}) {
-  if (!supabaseUrl) {
-    onError("Backend not configured.");
-    return;
-  }
-
-  const resp = await fetch(`${supabaseUrl}/functions/v1/generate-content`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session?.access_token || ""}`
-    },
-    body: JSON.stringify({ toolTitle: tool.title, toolDescription: tool.description, category: tool.category, fields }),
-  });
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ error: "Request failed" }));
-    onError(err.error || `Error ${resp.status}`);
-    return;
-  }
-
-  if (!resp.body) {
-    onError("No response body");
-    return;
-  }
-
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let streamDone = false;
-
-  while (!streamDone) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    let newlineIndex: number;
-    while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
-      let line = buffer.slice(0, newlineIndex);
-      buffer = buffer.slice(newlineIndex + 1);
-
-      if (line.endsWith("\r")) line = line.slice(0, -1);
-      if (line.startsWith(":") || line.trim() === "") continue;
-      if (!line.startsWith("data: ")) {
-          // Some streams send raw text or JSON directly
-          try {
-             const p = JSON.parse(line);
-             const c = p.choices?.[0]?.delta?.content;
-             if (c) onDelta(c);
-          } catch {
-             // If not JSON, it might be a partial line or raw text
-          }
-          continue;
-      }
-
-      const jsonStr = line.slice(6).trim();
-      if (jsonStr === "[DONE]") {
-        streamDone = true;
-        break;
-      }
-
-      try {
-        const p = JSON.parse(jsonStr);
-        const c = p.choices?.[0]?.delta?.content;
-        if (c) onDelta(c);
-      } catch {
-        // Handle potential split JSON across chunks
-      }
-    }
-  }
-  onDone();
-}
-
 export function GenericToolPage({ tool }: GenericToolPageProps) {
-  const { session } = useAuth();
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState("");
   const [history] = useState(() => getToolHistory(tool.slug));
 
-  const handleChange = (name: string, value: string) => setValues(prev => ({ ...prev, [name]: value }));
+  const handleChange = (name: string, value: string) =>
+    setValues(prev => ({ ...prev, [name]: value }));
 
   const handleGenerate = async () => {
     const allFilled = tool.fields.every(f => values[f.name]?.trim());
@@ -143,71 +84,57 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
       toast({ title: "Missing fields", description: "Please fill in all fields.", variant: "destructive" });
       return;
     }
-
     setLoading(true);
     setOutput("");
-
-    let accumulated = "";
     try {
-      await streamGenerate({
-        tool,
-        fields: values,
-        session,
-        onDelta: chunk => {
-          accumulated += chunk;
-          setOutput(accumulated);
-        },
-        onDone: () => {
-          setLoading(false);
-          localStorage.setItem(STORAGE_KEY, accumulated);
-          addActivity(tool.title);
-          saveToolHistory(tool.slug, accumulated);
-          toast({ title: "Generated!", description: `${tool.title} results are ready.` });
-        },
-        onError: (msg) => {
-          setLoading(false);
-          toast({ title: "Error", description: msg, variant: "destructive" });
+      const { data, error } = await supabase.functions.invoke("ai-generate", {
+        body: {
+          tool: tool.slug,
+          inputs: values,
+          toolTitle: tool.title,
+          toolDescription: tool.description,
+          category: tool.category,
         },
       });
-    } catch (err) {
+      if (error) throw error;
+      const formatted = formatOutput(data?.result);
+      setOutput(formatted);
+      addActivity(tool.title);
+      saveToolHistory(tool.slug, formatted);
+      toast({ title: "Generated!", description: `${tool.title} results are ready.` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to generate.", variant: "destructive" });
+    } finally {
       setLoading(false);
-      toast({ title: "Error", description: "Failed to connect. Please try again.", variant: "destructive" });
     }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(output);
-    toast({ title: "Copied!" });
-  };
-
+  const handleCopy = () => { navigator.clipboard.writeText(output); toast({ title: "Copied!" }); };
   const handleDownload = () => {
     const blob = new Blob([output], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `${tool.slug}-output.txt`;
-    a.click();
+    a.href = url; a.download = `${tool.slug}-output.txt`; a.click();
     URL.revokeObjectURL(url);
     toast({ title: "Downloaded!" });
   };
-
-  const handleSave = () => {
-    saveToolHistory(tool.slug, output);
-    toast({ title: "Saved to history!" });
-  };
+  const handleSave = () => { saveToolHistory(tool.slug, output); toast({ title: "Saved!" }); };
 
   return (
     <DashboardLayout>
       <ToolPageWrapper title={tool.title} description={tool.description}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Form */}
           <Card className="card-animate h-fit">
             <CardContent className="p-6 space-y-4">
               {tool.fields.map(field => (
                 <div key={field.name} className="space-y-2">
                   <Label>{field.label}</Label>
-                  {field.type === "text" && <Input placeholder={field.placeholder} value={values[field.name] || ""} onChange={e => handleChange(field.name, e.target.value)} />}
-                  {field.type === "textarea" && <Textarea className="min-h-[100px]" placeholder={field.placeholder} value={values[field.name] || ""} onChange={e => handleChange(field.name, e.target.value)} />}
+                  {field.type === "text" && (
+                    <Input placeholder={field.placeholder} value={values[field.name] || ""} onChange={e => handleChange(field.name, e.target.value)} />
+                  )}
+                  {field.type === "textarea" && (
+                    <Textarea className="min-h-[100px]" placeholder={field.placeholder} value={values[field.name] || ""} onChange={e => handleChange(field.name, e.target.value)} />
+                  )}
                   {field.type === "select" && (
                     <Select value={values[field.name] || ""} onValueChange={v => handleChange(field.name, v)}>
                       <SelectTrigger><SelectValue placeholder={`Select ${field.label.toLowerCase()}`} /></SelectTrigger>
@@ -217,7 +144,9 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
                 </div>
               ))}
               <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate} disabled={loading}>
-                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate with AI</>}
+                {loading
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                  : <><Sparkles className="w-4 h-4 mr-2" /> Generate with AI</>}
               </Button>
             </CardContent>
           </Card>
@@ -238,18 +167,15 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
                     ) : (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between flex-wrap gap-2">
-                          <h3 className="font-display font-semibold text-lg">
-                            Results{loading && <span className="ml-2 text-xs text-muted-foreground animate-pulse">● streaming...</span>}
-                          </h3>
+                          <h3 className="font-display font-semibold text-lg">Results</h3>
                           <div className="flex gap-1.5 flex-wrap">
-                            <Button variant="outline" size="sm" onClick={handleCopy} disabled={loading}><Copy className="h-3 w-3 mr-1" /> Copy</Button>
-                            <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}><Download className="h-3 w-3 mr-1" /> TXT</Button>
-                            <Button variant="outline" size="sm" onClick={handleSave} disabled={loading}><Save className="h-3 w-3 mr-1" /> Save</Button>
+                            <Button variant="outline" size="sm" onClick={handleCopy}><Copy className="h-3 w-3 mr-1" /> Copy</Button>
+                            <Button variant="outline" size="sm" onClick={handleDownload}><Download className="h-3 w-3 mr-1" /> TXT</Button>
+                            <Button variant="outline" size="sm" onClick={handleSave}><Save className="h-3 w-3 mr-1" /> Save</Button>
                           </div>
                         </div>
-                        <div className="bg-muted rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed max-h-[500px] overflow-y-auto">
+                        <div className="bg-muted rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed max-h-[600px] overflow-y-auto font-mono">
                           {output}
-                          {loading && <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />}
                         </div>
                       </div>
                     )}
@@ -264,17 +190,19 @@ export function GenericToolPage({ tool }: GenericToolPageProps) {
           </AnimatePresence>
         </div>
 
-        {/* Recent History */}
         {history.length > 0 && (
           <div className="mt-8">
-            <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2"><Clock className="w-4 h-4" /> Recent Generations</h3>
+            <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+              <Clock className="w-4 h-4" /> Recent Generations
+            </h3>
             <div className="space-y-3">
               {history.map((h, i) => (
                 <Card key={i} className="card-animate">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-muted-foreground">{h.time}</span>
-                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { navigator.clipboard.writeText(h.output); toast({ title: "Copied!" }); }}>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs"
+                        onClick={() => { navigator.clipboard.writeText(h.output); toast({ title: "Copied!" }); }}>
                         <Copy className="h-3 w-3 mr-1" /> Copy
                       </Button>
                     </div>
