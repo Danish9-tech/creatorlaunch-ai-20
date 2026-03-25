@@ -1,18 +1,26 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||
-  "https://lpuoggdzqmlehclbhjfe.supabase.co";
+// ============================================================
+// SECURITY FIX: Keys must ONLY come from environment variables.
+// Never hardcode Supabase URL or keys here.
+// Set these in:
+//   Local: .env.local
+//   Vercel: Settings > Environment Variables
+// ============================================================
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const SUPABASE_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwdW9nZ2R6cW1sZWhjbGJoamZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MzkxNjEsImV4cCI6MjA4OTExNTE2MX0.2jzyCtHuOOm4dOYQ5Co4104Ao4oKmEhR7bxmm0BfLu0";
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error(
+    "[CreatorLaunch] Missing Supabase env vars.\n" +
+    "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local"
+  );
+}
 
-export const supabaseUrl = SUPABASE_URL;
-export const supabaseKey = SUPABASE_KEY;
+export const supabaseUrl = SUPABASE_URL ?? "";
+export const supabaseKey = SUPABASE_KEY ?? "";
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
