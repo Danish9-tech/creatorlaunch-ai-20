@@ -88,7 +88,7 @@ export function usePlanGate({
   const { profile, loading } = useAuth();
 
   const compute = useCallback((): PlanGateResult => {
-    if (loading || !profile) {
+    if (loading) {
       return {
         allowed: false,
         reason: null,
@@ -97,6 +97,19 @@ export function usePlanGate({
         credits: 0,
         creditsUsed: 0,
         loading: true,
+        creditsExhausted: false,
+      };
+    }
+
+    if (!profile) {
+      return {
+        allowed: false,
+        reason: "Your account profile is still being set up or could not be loaded. Please refresh the page or sign out and back in.",
+        upgradeUrl: "/dashboard",
+        plan: "free",
+        credits: 0,
+        creditsUsed: 0,
+        loading: false,
         creditsExhausted: false,
       };
     }
