@@ -69,14 +69,19 @@ export function useAuth(): UseAuthReturn {
     }
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user?.id) {
-        fetchProfile(session.user.id).finally(() => setLoading(false));
-      } else {
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        if (session?.user?.id) {
+          fetchProfile(session.user.id).finally(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.warn("[useAuth] Could not get session:", err);
         setLoading(false);
-      }
-    });
+      });
 
     // Subscribe to auth changes
     const {
@@ -88,6 +93,7 @@ export function useAuth(): UseAuthReturn {
       } else {
         setProfile(null);
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
