@@ -115,6 +115,25 @@ CREATE INDEX IF NOT EXISTS usage_logs_user_id_idx ON public.usage_logs(user_id);
 CREATE INDEX IF NOT EXISTS usage_logs_created_at_idx ON public.usage_logs(created_at DESC);
 
 -- =============================================================
+-- USER API KEYS TABLE
+-- =============================================================
+CREATE TABLE IF NOT EXISTS public.user_api_keys (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id           UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  provider          TEXT NOT NULL CHECK (provider IN ('openai', 'anthropic', 'grok', 'gemini')),
+  api_key_encrypted TEXT NOT NULL,
+  model_preference  TEXT,
+  is_active         BOOLEAN DEFAULT TRUE,
+  last_used_at      TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, provider)
+);
+
+CREATE INDEX IF NOT EXISTS user_api_keys_user_id_idx ON public.user_api_keys(user_id);
+CREATE INDEX IF NOT EXISTS user_api_keys_active_idx ON public.user_api_keys(user_id, is_active);
+
+-- =============================================================
 -- ROW LEVEL SECURITY (RLS)
 -- =============================================================
 
@@ -166,6 +185,14 @@ CREATE POLICY "Users can insert own usage logs"
   ON public.usage_logs FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+-- User API Keys RLS
+ALTER TABLE public.user_api_keys ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own api keys"
+  ON public.user_api_keys FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
 -- =============================================================
 -- GRANT PERMISSIONS
 -- =============================================================
@@ -174,3 +201,4 @@ GRANT ALL ON public.profiles TO authenticated;
 GRANT ALL ON public.generations TO authenticated;
 GRANT SELECT ON public.subscriptions TO authenticated;
 GRANT ALL ON public.usage_logs TO authenticated;
+GRANT ALL ON public.user_api_keys TO authenticated;
