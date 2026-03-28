@@ -26,7 +26,6 @@ type ProviderState = {
   isActive: boolean;
 };
 
-<<<<<<< HEAD
 type Platform = "gumroad" | "etsy" | "shopify" | "creative_market" | "payhip" | "teachable";
 
 type PlatformState = {
@@ -39,9 +38,6 @@ type PlatformState = {
   productsSynced: number;
   lastSyncedAt: string | null;
 };
-
-=======
->>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 const providerLabels: Record<Provider, string> = {
   grok: "Grok / xAI",
   openai: "OpenAI",
@@ -64,7 +60,6 @@ const modelPlaceholders: Record<Provider, string> = {
 };
 
 const providers: Provider[] = ["grok", "openai", "anthropic", "gemini"];
-<<<<<<< HEAD
 const sellingPlatforms: Platform[] = ["gumroad", "etsy", "shopify", "creative_market", "payhip", "teachable"];
 
 const platformLabels: Record<Platform, string> = {
@@ -84,8 +79,6 @@ const platformTokenLabels: Record<Platform, string> = {
   payhip: "API Token",
   teachable: "API Token",
 };
-=======
->>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 
 function loadPrefs() {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}"); } catch { return {}; }
@@ -100,7 +93,6 @@ function createInitialProviderState(): Record<Provider, ProviderState> {
   };
 }
 
-<<<<<<< HEAD
 function createInitialPlatformState(): Record<Platform, PlatformState> {
   return {
     gumroad: { platformName: "Gumroad", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
@@ -111,9 +103,6 @@ function createInitialPlatformState(): Record<Platform, PlatformState> {
     teachable: { platformName: "Teachable", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
   };
 }
-
-=======
->>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 const plans = [
   { name: "Free", price: "$0/mo", current: true },
   { name: "Pro", price: "$19/mo", current: false },
@@ -130,13 +119,10 @@ const Settings = () => {
   const [savingProvider, setSavingProvider] = useState<Provider | null>(null);
   const [deletingProvider, setDeletingProvider] = useState<Provider | null>(null);
   const [activatingProvider, setActivatingProvider] = useState<Provider | null>(null);
-<<<<<<< HEAD
   const [platformState, setPlatformState] = useState<Record<Platform, PlatformState>>(() => createInitialPlatformState());
   const [loadingPlatforms, setLoadingPlatforms] = useState(true);
   const [savingPlatform, setSavingPlatform] = useState<Platform | null>(null);
   const [deletingPlatform, setDeletingPlatform] = useState<Platform | null>(null);
-=======
->>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 
   const toggle = (key: string) => {
     const next = { ...prefs, [key]: !prefs[key] };
@@ -185,7 +171,6 @@ const Settings = () => {
     loadApiKeys();
   }, []);
 
-<<<<<<< HEAD
   useEffect(() => {
     const loadPlatformIntegrations = async () => {
       setLoadingPlatforms(true);
@@ -223,9 +208,6 @@ const Settings = () => {
 
     loadPlatformIntegrations();
   }, []);
-
-=======
->>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
   const handleDarkMode = (v: boolean) => {
     setDarkMode(v);
     toast({ title: `Dark mode ${v ? "enabled" : "disabled"}` });
