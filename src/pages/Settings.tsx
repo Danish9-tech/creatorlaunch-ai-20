@@ -26,6 +26,22 @@ type ProviderState = {
   isActive: boolean;
 };
 
+<<<<<<< HEAD
+type Platform = "gumroad" | "etsy" | "shopify" | "creative_market" | "payhip" | "teachable";
+
+type PlatformState = {
+  platformName: string;
+  accessToken: string;
+  maskedToken: string;
+  hasAccessToken: boolean;
+  storeUrl: string;
+  isActive: boolean;
+  productsSynced: number;
+  lastSyncedAt: string | null;
+};
+
+=======
+>>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 const providerLabels: Record<Provider, string> = {
   grok: "Grok / xAI",
   openai: "OpenAI",
@@ -48,6 +64,28 @@ const modelPlaceholders: Record<Provider, string> = {
 };
 
 const providers: Provider[] = ["grok", "openai", "anthropic", "gemini"];
+<<<<<<< HEAD
+const sellingPlatforms: Platform[] = ["gumroad", "etsy", "shopify", "creative_market", "payhip", "teachable"];
+
+const platformLabels: Record<Platform, string> = {
+  gumroad: "Gumroad",
+  etsy: "Etsy",
+  shopify: "Shopify",
+  creative_market: "Creative Market",
+  payhip: "Payhip",
+  teachable: "Teachable",
+};
+
+const platformTokenLabels: Record<Platform, string> = {
+  gumroad: "Access Token",
+  etsy: "API Token",
+  shopify: "Admin API Token",
+  creative_market: "Access Token",
+  payhip: "API Token",
+  teachable: "API Token",
+};
+=======
+>>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 
 function loadPrefs() {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}"); } catch { return {}; }
@@ -62,17 +100,24 @@ function createInitialProviderState(): Record<Provider, ProviderState> {
   };
 }
 
+<<<<<<< HEAD
+function createInitialPlatformState(): Record<Platform, PlatformState> {
+  return {
+    gumroad: { platformName: "Gumroad", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
+    etsy: { platformName: "Etsy", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
+    shopify: { platformName: "Shopify", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
+    creative_market: { platformName: "Creative Market", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
+    payhip: { platformName: "Payhip", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
+    teachable: { platformName: "Teachable", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
+  };
+}
+
+=======
+>>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 const plans = [
   { name: "Free", price: "$0/mo", current: true },
   { name: "Pro", price: "$19/mo", current: false },
   { name: "Business", price: "$49/mo", current: false },
-];
-
-const platformConnections = [
-  { name: "Etsy", connected: false },
-  { name: "Gumroad", connected: false },
-  { name: "Shopify", connected: false },
-  { name: "Creative Market", connected: false },
 ];
 
 const Settings = () => {
@@ -85,6 +130,13 @@ const Settings = () => {
   const [savingProvider, setSavingProvider] = useState<Provider | null>(null);
   const [deletingProvider, setDeletingProvider] = useState<Provider | null>(null);
   const [activatingProvider, setActivatingProvider] = useState<Provider | null>(null);
+<<<<<<< HEAD
+  const [platformState, setPlatformState] = useState<Record<Platform, PlatformState>>(() => createInitialPlatformState());
+  const [loadingPlatforms, setLoadingPlatforms] = useState(true);
+  const [savingPlatform, setSavingPlatform] = useState<Platform | null>(null);
+  const [deletingPlatform, setDeletingPlatform] = useState<Platform | null>(null);
+=======
+>>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 
   const toggle = (key: string) => {
     const next = { ...prefs, [key]: !prefs[key] };
@@ -133,6 +185,47 @@ const Settings = () => {
     loadApiKeys();
   }, []);
 
+<<<<<<< HEAD
+  useEffect(() => {
+    const loadPlatformIntegrations = async () => {
+      setLoadingPlatforms(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("manage-platform-integrations", {
+          body: { action: "list" },
+        });
+
+        if (error) throw error;
+
+        const next = createInitialPlatformState();
+        for (const entry of data?.integrations || []) {
+          const platform = entry.platform as Platform;
+          if (!next[platform]) continue;
+          next[platform] = {
+            ...next[platform],
+            platformName: entry.platformName || next[platform].platformName,
+            hasAccessToken: !!entry.hasAccessToken,
+            maskedToken: entry.maskedToken || "",
+            storeUrl: entry.settings?.store_url || "",
+            isActive: entry.isActive ?? true,
+            productsSynced: entry.productsSynced ?? 0,
+            lastSyncedAt: entry.lastSyncedAt || null,
+          };
+        }
+
+        setPlatformState(next);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Could not load platform connections.";
+        toast({ title: "Platform connections unavailable", description: message, variant: "destructive" });
+      } finally {
+        setLoadingPlatforms(false);
+      }
+    };
+
+    loadPlatformIntegrations();
+  }, []);
+
+=======
+>>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
   const handleDarkMode = (v: boolean) => {
     setDarkMode(v);
     toast({ title: `Dark mode ${v ? "enabled" : "disabled"}` });
@@ -270,6 +363,86 @@ const Settings = () => {
     navigate("/");
   };
 
+  const updatePlatformField = (platform: Platform, field: keyof PlatformState, value: string | boolean | number | null) => {
+    setPlatformState((prev) => ({
+      ...prev,
+      [platform]: {
+        ...prev[platform],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSavePlatform = async (platform: Platform) => {
+    const state = platformState[platform];
+    setSavingPlatform(platform);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-platform-integrations", {
+        body: {
+          action: "save",
+          platform,
+          platformName: state.platformName.trim() || platformLabels[platform],
+          accessToken: state.accessToken.trim(),
+          storeUrl: state.storeUrl.trim(),
+          isActive: state.isActive,
+        },
+      });
+
+      if (error) throw error;
+
+      setPlatformState((prev) => ({
+        ...prev,
+        [platform]: {
+          ...prev[platform],
+          platformName: data?.integration?.platformName || prev[platform].platformName,
+          accessToken: "",
+          maskedToken: data?.integration?.maskedToken || prev[platform].maskedToken,
+          hasAccessToken: !!data?.integration?.hasAccessToken,
+          storeUrl: data?.integration?.settings?.store_url || prev[platform].storeUrl,
+          isActive: data?.integration?.isActive ?? prev[platform].isActive,
+        },
+      }));
+
+      toast({
+        title: `${platformLabels[platform]} connected`,
+        description: platform === "gumroad"
+          ? "You can now publish products to Gumroad from your product library."
+          : "Platform credentials were saved for this user.",
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not save platform connection.";
+      toast({ title: "Connection failed", description: message, variant: "destructive" });
+    } finally {
+      setSavingPlatform(null);
+    }
+  };
+
+  const handleDeletePlatform = async (platform: Platform) => {
+    setDeletingPlatform(platform);
+    try {
+      const { error } = await supabase.functions.invoke("manage-platform-integrations", {
+        body: {
+          action: "delete",
+          platform,
+        },
+      });
+
+      if (error) throw error;
+
+      setPlatformState((prev) => ({
+        ...prev,
+        [platform]: createInitialPlatformState()[platform],
+      }));
+
+      toast({ title: `${platformLabels[platform]} disconnected` });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not remove platform connection.";
+      toast({ title: "Disconnect failed", description: message, variant: "destructive" });
+    } finally {
+      setDeletingPlatform(null);
+    }
+  };
+
   return (
     <DashboardLayout>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto space-y-6">
@@ -384,15 +557,78 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2"><Globe className="w-4 h-4" /> Platform Connections</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {platformConnections.map(p => (
-              <div key={p.name} className="flex items-center justify-between py-1">
-                <span className="text-sm font-medium">{p.name}</span>
-                <Button variant="outline" size="sm" onClick={() => toast({ title: "Coming soon", description: `${p.name} OAuth integration will be available with Lovable Cloud.` })}>
-                  Connect
-                </Button>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Connect a store once, then reuse it for publishing. Gumroad is ready first, and the same connection flow is available for other supported platforms.
+            </p>
+
+            {loadingPlatforms ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading platform connections...
               </div>
-            ))}
+            ) : (
+              <div className="grid gap-4">
+                {sellingPlatforms.map((platform) => {
+                  const state = platformState[platform];
+                  const busy = savingPlatform === platform || deletingPlatform === platform;
+                  return (
+                    <div key={platform} className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{platformLabels[platform]}</p>
+                          {state.hasAccessToken ? <Badge>Connected</Badge> : <Badge variant="secondary">Not Connected</Badge>}
+                        </div>
+                        {state.hasAccessToken && (
+                          <p className="text-xs text-muted-foreground">
+                            Token: {state.maskedToken || "Saved"}
+                            {state.productsSynced > 0 ? ` · ${state.productsSynced} synced` : ""}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>{platformLabels[platform]} Display Name</Label>
+                          <Input
+                            value={state.platformName}
+                            onChange={(e) => updatePlatformField(platform, "platformName", e.target.value)}
+                            placeholder={platformLabels[platform]}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{platformTokenLabels[platform]}</Label>
+                          <Input
+                            type="password"
+                            value={state.accessToken}
+                            onChange={(e) => updatePlatformField(platform, "accessToken", e.target.value)}
+                            placeholder={platform === "gumroad" ? "Paste your Gumroad access token" : "Paste your platform token"}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Store URL</Label>
+                        <Input
+                          value={state.storeUrl}
+                          onChange={(e) => updatePlatformField(platform, "storeUrl", e.target.value)}
+                          placeholder={platform === "gumroad" ? "https://yourstore.gumroad.com" : "https://your-store-url"}
+                        />
+                      </div>
+
+                      <div className="flex gap-2 flex-wrap">
+                        <Button onClick={() => handleSavePlatform(platform)} disabled={busy}>
+                          {savingPlatform === platform ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : state.hasAccessToken ? "Update Connection" : "Connect"}
+                        </Button>
+                        <Button variant="outline" onClick={() => handleDeletePlatform(platform)} disabled={busy || !state.hasAccessToken}>
+                          {deletingPlatform === platform ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Disconnecting...</> : "Disconnect"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
