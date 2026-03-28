@@ -59,28 +59,59 @@ function saveToolHistory(slug: string, output: string) {
   } catch {}
 }
 
-function formatOutput(result: unknown): string {
+function stripHtml(str: string): string {
+  return String(str)
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}
+
+function formatOutput(result: any): string {
   if (!result) return "";
-  if (typeof result === "string") return result;
-  const r = result as Record<string, unknown>;
-  if (r.output) return String(r.output);
-  if (r.text) return String(r.text);
+
+  // Plain string
+  if (typeof result === "string") return stripHtml(result);
+
+  // Single text/output field
+  if (result.output) return stripHtml(result.output);
+  if (result.text) return stripHtml(result.text);
+
+  // Array of items (e.g. idea-generator, trend-finder, competitor-analyzer)
   if (Array.isArray(result)) {
-    return result
-      .map((item, i) => {
-        const num = `\n${"━".repeat(40)}\n📌 ITEM ${i + 1}\n${"━".repeat(40)}`;
-        const fields = Object.entries(item as Record<string, unknown>)
-          .map(([k, v]) => `\n${k.replace(/([A-Z])/g, " $1").toUpperCase()}:\n${v}`)
-          .join("\n");
-        return num + fields;
-      })
-      .join("\n");
+    return result.map((item: any, i: number) => {
+      const divider = "━".repeat(50);
+      const header = `\n${divider}\n  RESULT ${i + 1}\n${divider}`;
+      const fields = Object.entries(item)
+        .map(([k, v]) => {
+          const label = k
+            .replace(/([A-Z])/g, " $1")
+            .replace(/^./, s => s.toUpperCase())
+            .toUpperCase();
+          return `\n▸ ${label}:\n  ${stripHtml(String(v)).replace(/\n/g, "\n  ")}`;
+        })
+        .join("\n");
+      return header + fields;
+    }).join("\n\n");
   }
-  return Object.entries(r)
+
+  // Object with multiple fields (most tools)
+  const divider = "━".repeat(50);
+  return Object.entries(result)
     .map(([k, v]) => {
-      const label = k.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
-      return `\n━━━ ${label.toUpperCase()} ━━━\n${v}`;
+      if (v === null || v === undefined || v === "") return "";
+      const label = k
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^./, s => s.toUpperCase())
+        .toUpperCase();
+      const value = typeof v === "object"
+        ? Object.entries(v).map(([sk, sv]) => `  • ${sk}: ${sv}`).join("\n")
+        : stripHtml(String(v));
+      return `\n${divider}\n  ${label}\n${divider}\n${value}`;
     })
+    .filter(Boolean)
     .join("\n")
     .trim();
 }
