@@ -133,8 +133,6 @@ CREATE TABLE IF NOT EXISTS public.user_api_keys (
 CREATE INDEX IF NOT EXISTS user_api_keys_user_id_idx ON public.user_api_keys(user_id);
 CREATE INDEX IF NOT EXISTS user_api_keys_active_idx ON public.user_api_keys(user_id, is_active);
 
--- =============================================================
-<<<<<<< HEAD
 -- MARKETPLACE INTEGRATIONS TABLE
 -- =============================================================
 CREATE TABLE IF NOT EXISTS public.marketplace_integrations (
@@ -156,8 +154,6 @@ CREATE INDEX IF NOT EXISTS marketplace_integrations_user_id_idx ON public.market
 CREATE INDEX IF NOT EXISTS marketplace_integrations_platform_idx ON public.marketplace_integrations(user_id, platform);
 
 -- =============================================================
-=======
->>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 -- ROW LEVEL SECURITY (RLS)
 -- =============================================================
 
@@ -217,7 +213,6 @@ CREATE POLICY "Users can manage own api keys"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-<<<<<<< HEAD
 -- Marketplace Integrations RLS
 ALTER TABLE public.marketplace_integrations ENABLE ROW LEVEL SECURITY;
 
@@ -225,9 +220,6 @@ CREATE POLICY "Users can manage own marketplace integrations"
   ON public.marketplace_integrations FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
-
-=======
->>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 -- =============================================================
 -- GRANT PERMISSIONS
 -- =============================================================
@@ -237,7 +229,4 @@ GRANT ALL ON public.generations TO authenticated;
 GRANT SELECT ON public.subscriptions TO authenticated;
 GRANT ALL ON public.usage_logs TO authenticated;
 GRANT ALL ON public.user_api_keys TO authenticated;
-<<<<<<< HEAD
 GRANT ALL ON public.marketplace_integrations TO authenticated;
-=======
->>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
