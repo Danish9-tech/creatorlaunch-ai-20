@@ -134,6 +134,30 @@ CREATE INDEX IF NOT EXISTS user_api_keys_user_id_idx ON public.user_api_keys(use
 CREATE INDEX IF NOT EXISTS user_api_keys_active_idx ON public.user_api_keys(user_id, is_active);
 
 -- =============================================================
+<<<<<<< HEAD
+-- MARKETPLACE INTEGRATIONS TABLE
+-- =============================================================
+CREATE TABLE IF NOT EXISTS public.marketplace_integrations (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id         UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  platform        TEXT NOT NULL CHECK (platform IN ('gumroad', 'etsy', 'shopify', 'creative_market', 'payhip', 'teachable')),
+  platform_name   TEXT,
+  credentials     JSONB DEFAULT '{}',
+  settings        JSONB DEFAULT '{}',
+  is_active       BOOLEAN DEFAULT TRUE,
+  last_synced_at  TIMESTAMPTZ,
+  products_synced INTEGER DEFAULT 0,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, platform)
+);
+
+CREATE INDEX IF NOT EXISTS marketplace_integrations_user_id_idx ON public.marketplace_integrations(user_id);
+CREATE INDEX IF NOT EXISTS marketplace_integrations_platform_idx ON public.marketplace_integrations(user_id, platform);
+
+-- =============================================================
+=======
+>>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 -- ROW LEVEL SECURITY (RLS)
 -- =============================================================
 
@@ -193,6 +217,17 @@ CREATE POLICY "Users can manage own api keys"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+<<<<<<< HEAD
+-- Marketplace Integrations RLS
+ALTER TABLE public.marketplace_integrations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own marketplace integrations"
+  ON public.marketplace_integrations FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+=======
+>>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
 -- =============================================================
 -- GRANT PERMISSIONS
 -- =============================================================
@@ -202,3 +237,7 @@ GRANT ALL ON public.generations TO authenticated;
 GRANT SELECT ON public.subscriptions TO authenticated;
 GRANT ALL ON public.usage_logs TO authenticated;
 GRANT ALL ON public.user_api_keys TO authenticated;
+<<<<<<< HEAD
+GRANT ALL ON public.marketplace_integrations TO authenticated;
+=======
+>>>>>>> e99868580ef2741e5b0fbe1912a0a5948fa5fcce
