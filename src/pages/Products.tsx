@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Package, Plus, Edit, Trash2, DollarSign, Tag } from "lucide-react";
+import { Package, Plus, Edit, Trash2, DollarSign, Tag, UploadCloud, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { EmptyState } from "@/components/EmptyState";
@@ -43,17 +43,33 @@ const Products = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
+  const [gumroadConnected, setGumroadConnected] = useState(false);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUserId(session.user.id);
         loadProducts(session.user.id);
+        loadIntegrations();
       } else {
         setLoading(false);
       }
     });
   }, []);
+
+  const loadIntegrations = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-platform-integrations", {
+        body: { action: "list" },
+      });
+      if (error) throw error;
+      const integrations = data?.integrations || [];
+      setGumroadConnected(integrations.some((entry: { platform?: string; hasAccessToken?: boolean }) => entry.platform === "gumroad" && entry.hasAccessToken));
+    } catch {
+      setGumroadConnected(false);
+    }
+  };
 
   const loadProducts = async (uid: string) => {
     setLoading(true);
@@ -148,6 +164,35 @@ const Products = () => {
     }
     toast({ title: "Product deleted" });
     if (userId) loadProducts(userId);
+  };
+
+  const handlePublishToGumroad = async (productId: string) => {
+    setPublishingId(productId);
+    try {
+      const { data, error } = await supabase.functions.invoke("publish-gumroad-product", {
+        body: { productId },
+      });
+
+      if (error) throw error;
+
+      const productUrl =
+        data?.result?.product?.short_url ||
+        data?.result?.product?.url ||
+        data?.result?.product?.formatted_url ||
+        "";
+
+      toast({
+        title: "Published to Gumroad",
+        description: productUrl ? `Created: ${productUrl}` : "Your product was sent to Gumroad successfully.",
+      });
+
+      loadIntegrations();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not publish to Gumroad.";
+      toast({ title: "Gumroad publish failed", description: message, variant: "destructive" });
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   const togglePlatform = (plat: string) => {
@@ -309,6 +354,21 @@ const Products = () => {
                           ))}
                         </div>
                       )}
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          disabled={!gumroadConnected || publishingId === p.id}
+                          onClick={() => handlePublishToGumroad(p.id)}
+                        >
+                          {publishingId === p.id ? (
+                            <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Publishing...</>
+                          ) : (
+                            <><UploadCloud className="h-3.5 w-3.5 mr-2" /> {gumroadConnected ? "Publish to Gumroad" : "Connect Gumroad in Settings"}</>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
