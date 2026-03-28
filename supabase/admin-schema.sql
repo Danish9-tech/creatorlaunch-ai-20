@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS public.user_api_keys (
 CREATE TABLE IF NOT EXISTS public.marketplace_integrations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  platform TEXT NOT NULL CHECK (platform IN ('amazon', 'ebay', 'etsy', 'shopify', 'walmart', 'woocommerce', 'custom')),
+  platform TEXT NOT NULL CHECK (platform IN ('gumroad', 'etsy', 'shopify', 'creative_market', 'payhip', 'teachable', 'amazon', 'ebay', 'walmart', 'woocommerce', 'custom')),
   platform_name TEXT,
   credentials JSONB DEFAULT '{}',
   settings JSONB DEFAULT '{}',
