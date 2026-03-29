@@ -114,7 +114,7 @@ export function usePlanGate({
       };
     }
 
-    const userPlan = (profile.plan as Plan) ?? "free";
+    const userPlan = (profile.subscription_tier as Plan) ?? "free";
     // FIX: Use ?? to handle null/undefined credits (same root cause as NaN bug)
     const credits = profile.credits ?? 50;
     const creditsUsed = profile.credits_used ?? 0;
