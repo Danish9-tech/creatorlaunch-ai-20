@@ -7,7 +7,7 @@ interface Profile {
   email: string;
   full_name: string | null;
   avatar_url: string | null;
-  plan: "free" | "starter" | "pro" | "agency";
+  subscription_tier: "free" | "starter" | "pro" | "agency";
   credits: number;
   credits_used: number;
   stripe_customer: string | null;
