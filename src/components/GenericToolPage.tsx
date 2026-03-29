@@ -1,6 +1,3 @@
-// src/components/GenericToolPage.tsx
-// Updated: integrates PlanGate HOC to enforce plan/credit gating
-// for all 40+ tool pages without duplicating hook logic.
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
@@ -71,15 +68,10 @@ function stripHtml(str: string): string {
 
 function formatOutput(result: any): string {
   if (!result) return "";
-
-  // Plain string
   if (typeof result === "string") return stripHtml(result);
-
-  // Single text/output field
   if (result.output) return stripHtml(result.output);
   if (result.text) return stripHtml(result.text);
 
-  // Array of items (e.g. idea-generator, trend-finder, competitor-analyzer)
   if (Array.isArray(result)) {
     return result.map((item: any, i: number) => {
       const divider = "━".repeat(50);
@@ -97,7 +89,6 @@ function formatOutput(result: any): string {
     }).join("\n\n");
   }
 
-  // Object with multiple fields (most tools)
   const divider = "━".repeat(50);
   return Object.entries(result)
     .map(([k, v]) => {
@@ -106,9 +97,12 @@ function formatOutput(result: any): string {
         .replace(/([A-Z])/g, " $1")
         .replace(/^./, s => s.toUpperCase())
         .toUpperCase();
-      const value = typeof v === "object"
-        ? Object.entries(v).map(([sk, sv]) => `  • ${sk}: ${sv}`).join("\n")
-        : stripHtml(String(v));
+      const value =
+        typeof v === "object"
+          ? Object.entries(v as object)
+              .map(([sk, sv]) => `  • ${sk}: ${sv}`)
+              .join("\n")
+          : stripHtml(String(v));
       return `\n${divider}\n  ${label}\n${divider}\n${value}`;
     })
     .filter(Boolean)
@@ -120,9 +114,6 @@ interface GenericToolPageProps {
   tool: ToolConfig;
 }
 
-// ================================================================
-// Inner component - only rendered when PlanGate allows access
-// ================================================================
 function ToolContent({ tool }: GenericToolPageProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -147,22 +138,20 @@ function ToolContent({ tool }: GenericToolPageProps) {
     setOutput("");
 
     try {
-      // Get the current session JWT to pass to the edge function
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        toast({ title: "Not signed in", description: "Please sign in to use tools.", variant: "destructive" });
-        return;
-      }
+      // Get user's saved Groq API key from their profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_api_key")
+        .single();
 
       const { data, error } = await supabase.functions.invoke("ai-generate", {
         body: {
           tool: tool.slug,
+          inputs: values,
           toolTitle: tool.title,
           toolDescription: tool.description,
           category: tool.category,
-          fields: values,
+          userApiKey: profile?.user_api_key || null,
         },
       });
 
@@ -204,7 +193,6 @@ function ToolContent({ tool }: GenericToolPageProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Input Card */}
       <Card className="card-animate">
         <CardContent className="p-6 space-y-4">
           {tool.fields.map((field) => (
@@ -258,7 +246,6 @@ function ToolContent({ tool }: GenericToolPageProps) {
         </CardContent>
       </Card>
 
-      {/* Output Card */}
       <AnimatePresence>
         {loading || output ? (
           <motion.div
@@ -311,7 +298,6 @@ function ToolContent({ tool }: GenericToolPageProps) {
         )}
       </AnimatePresence>
 
-      {/* History */}
       {history.length > 0 && (
         <div className="lg:col-span-2 mt-4">
           <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
@@ -348,17 +334,10 @@ function ToolContent({ tool }: GenericToolPageProps) {
   );
 }
 
-// ================================================================
-// GenericToolPage - public entry point
-// PlanGate wraps ToolContent so no per-tool gating needed
-// ================================================================
 export function GenericToolPage({ tool }: GenericToolPageProps) {
   return (
     <DashboardLayout>
       <ToolPageWrapper title={tool.title} description={tool.description}>
-        {/* PlanGate checks plan + credits for this tool slug.
-            If denied, it renders the upgrade UI instead of ToolContent.
-            All 40+ tool pages get this for free - zero duplication. */}
         <PlanGate toolId={tool.slug}>
           <ToolContent tool={tool} />
         </PlanGate>
