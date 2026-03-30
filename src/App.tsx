@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import AdminDashboard from "@/pages/AdminDashboard";
 
 // ── Lazy-loaded pages (code splitting for performance) ──────────────────────────────
 const Index               = lazy(() => import("./pages/Index"));
@@ -75,6 +76,8 @@ const App = () => (
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/contact" element={<Contact />} />
+
+            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
 
             {/* Protected routes — require login */}
             <Route element={<ProtectedRoute />}>
