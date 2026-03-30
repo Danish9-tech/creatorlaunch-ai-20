@@ -1,178 +1,100 @@
-// src/hooks/usePlanGate.ts
-// Plan gating hook for CreatorLaunch AI
-// Reads from profiles table (credits, plan) to determine access
-import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Lock, Zap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-// ================================================================
-// Plan hierarchy and tool access matrix
-// ================================================================
-export type Plan = "free" | "starter" | "pro" | "agency";
+interface PlanGateProps {
+  toolId: string;
+  children: ReactNode;
+}
 
-const PLAN_HIERARCHY: Record<Plan, number> = {
-  free: 0,
-  starter: 1,
-  pro: 2,
-  agency: 3,
-};
-
-// Maps minimum plan required per tool category
-const TOOL_PLAN_REQUIREMENTS: Record<string, Plan> = {
-  // Free tools - accessible to everyone
-  "product-idea-generator": "free",
-  "niche-research": "free",
-  "title-generator": "free",
-  // Starter tools
-  "listing-optimizer": "starter",
-  "seo-optimizer": "starter",
-  "email-sequence": "starter",
-  // Pro tools
-  "marketing-campaign": "pro",
-  "competitor-analysis": "pro",
-  "social-content-pack": "pro",
-  "launch-strategy": "pro",
-  // Agency tools
-  "bulk-generator": "agency",
-  "white-label-kit": "agency",
-};
-
-const PLAN_UPGRADE_URLS: Record<Plan, string> = {
-  free: "/pricing",
-  starter: "/pricing",
-  pro: "/pricing",
-  agency: "/pricing",
-};
-
-export interface PlanGateResult {
-  /** Whether the user can access this feature */
-  allowed: boolean;
-  /** Why access was denied */
-  reason: string | null;
-  /** URL to redirect to for upgrade */
-  upgradeUrl: string;
-  /** User's current plan */
-  plan: Plan;
-  /** Remaining credits */
+interface Profile {
+  plan: string;
+  plan_type: string;
   credits: number;
-  /** Credits used so far */
-  creditsUsed: number;
-  /** Whether we are loading profile data */
-  loading: boolean;
-  /** Whether credits are exhausted regardless of plan */
-  creditsExhausted: boolean;
+  role: string;
 }
 
-interface UsePlanGateOptions {
-  /** The tool slug to check access for. If omitted, only checks credits. */
-  toolId?: string;
-  /** Minimum plan required. Overrides the TOOL_PLAN_REQUIREMENTS lookup. */
-  requiredPlan?: Plan;
-}
+// Tools accessible on free plan
+const FREE_TOOLS = [
+  "idea-generator", "niche-finder", "product-name-generator",
+  "title-optimizer", "description-enhancer", "tag-generator",
+];
 
-/**
- * usePlanGate
- * -----------
- * Central hook for feature gating.
- * Checks the user's plan and credit balance against the required access level.
- *
- * Usage:
- *   const { allowed, reason, upgradeUrl } = usePlanGate({ toolId: 'seo-optimizer' });
- *
- * This hook reads from useAuth() which already fetches the profile.
- * No extra DB call needed.
- */
-export function usePlanGate({
-  toolId,
-  requiredPlan,
-}: UsePlanGateOptions = {}): PlanGateResult {
-  const { profile, loading } = useAuth();
-
-  const compute = useCallback((): PlanGateResult => {
-    if (loading) {
-      return {
-        allowed: false,
-        reason: null,
-        upgradeUrl: "/pricing",
-        plan: "free",
-        credits: 0,
-        creditsUsed: 0,
-        loading: true,
-        creditsExhausted: false,
-      };
-    }
-
-    if (!profile) {
-      return {
-        allowed: false,
-        reason: "Your account profile is still being set up or could not be loaded. Please refresh the page or sign out and back in.",
-        upgradeUrl: "/dashboard",
-        plan: "free",
-        credits: 0,
-        creditsUsed: 0,
-        loading: false,
-        creditsExhausted: false,
-      };
-    }
-
-    const userPlan = (profile.subscription_tier as Plan) ?? "free";
-    // FIX: Use ?? to handle null/undefined credits (same root cause as NaN bug)
-    const credits = profile.credits ?? 50;
-    const creditsUsed = profile.credits_used ?? 0;
-    const creditsExhausted = credits < 1;
-
-    // Determine required plan from prop or tool registry
-    const minPlan: Plan =
-      requiredPlan ??
-      (toolId ? TOOL_PLAN_REQUIREMENTS[toolId] ?? "free" : "free");
-
-    const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
-    const requiredLevel = PLAN_HIERARCHY[minPlan] ?? 0;
-
-    const planInsufficient = userLevel < requiredLevel;
-
-    if (planInsufficient) {
-      return {
-        allowed: false,
-        reason: `This tool requires the ${minPlan.charAt(0).toUpperCase() + minPlan.slice(1)} plan or higher. You are on the ${userPlan} plan.`,
-        upgradeUrl: PLAN_UPGRADE_URLS[minPlan],
-        plan: userPlan,
-        credits,
-        creditsUsed,
-        loading: false,
-        creditsExhausted,
-      };
-    }
-
-    if (creditsExhausted) {
-      return {
-        allowed: false,
-        reason: "You've used all your credits for this period. Upgrade your plan or wait for the next billing cycle.",
-        upgradeUrl: "/pricing",
-        plan: userPlan,
-        credits,
-        creditsUsed,
-        loading: false,
-        creditsExhausted: true,
-      };
-    }
-
-    return {
-      allowed: true,
-      reason: null,
-      upgradeUrl: "/pricing",
-      plan: userPlan,
-      credits,
-      creditsUsed,
-      loading: false,
-      creditsExhausted: false,
-    };
-  }, [profile, loading, toolId, requiredPlan]);
-
-  const [result, setResult] = useState<PlanGateResult>(() => compute());
+export function PlanGate({ toolId, children }: PlanGateProps) {
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setResult(compute());
-  }, [compute]);
+    const load = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("plan, plan_type, credits, role")
+        .single();
+      setProfile(data);
+      setLoading(false);
+    };
+    load();
+  }, []);
 
-  return result;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="w-8 h-8 rounded-full gradient-primary animate-pulse" />
+      </div>
+    );
+  }
+
+  // Admin and pro/business users get full access
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-8">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <Lock className="w-7 h-7 text-muted-foreground" />
+        </div>
+        <h3 className="text-xl font-bold">Upgrade Required</h3>
+        <p className="text-muted-foreground max-w-sm">
+          Your account profile is still being set up or could not be loaded.
+          Please refresh the page or sign out and back in.
+        </p>
+        <span className="text-xs px-3 py-1 bg-muted rounded-full">Current plan: Free</span>
+        <Button className="gradient-primary text-primary-foreground" onClick={() => navigate("/settings")}>
+          <Zap className="w-4 h-4 mr-2" /> Upgrade Plan
+        </Button>
+      </div>
+    );
+  }
+
+  const plan = profile.plan || profile.plan_type || "free";
+  const isAdmin = profile.role === "admin" || profile.role === "super_admin";
+  const isPro = plan === "pro" || plan === "business";
+
+  // Full access for admin and pro/business
+  if (isAdmin || isPro) {
+    return <>{children}</>;
+  }
+
+  // Free plan — check if tool is allowed
+  if (FREE_TOOLS.includes(toolId)) {
+    return <>{children}</>;
+  }
+
+  // Blocked — show upgrade UI
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-8">
+      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+        <Lock className="w-7 h-7 text-muted-foreground" />
+      </div>
+      <h3 className="text-xl font-bold">Pro Feature</h3>
+      <p className="text-muted-foreground max-w-sm">
+        This tool requires a Pro or Business plan. Upgrade to unlock all 50+ AI tools with unlimited generations.
+      </p>
+      <span className="text-xs px-3 py-1 bg-muted rounded-full">Current plan: {plan}</span>
+      <Button className="gradient-primary text-primary-foreground" onClick={() => navigate("/settings")}>
+        <Zap className="w-4 h-4 mr-2" /> Upgrade to Pro
+      </Button>
+    </div>
+  );
 }
