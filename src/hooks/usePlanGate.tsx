@@ -3,12 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type Plan = "free" | "starter" | "pro" | "business";
 
-interface UsePlanGateOptions {
+export interface UsePlanGateOptions {
   toolId?: string;
   requiredPlan?: Plan;
 }
 
-interface UsePlanGateResult {
+export interface UsePlanGateResult {
   allowed: boolean;
   loading: boolean;
   plan: Plan;
