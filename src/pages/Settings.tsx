@@ -95,6 +95,7 @@ const Settings = () => {
   const [prefs, setPrefs] = useState(() => loadPrefs());
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains("dark"));
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+    const [userPlan, setUserPlan] = useState<string>("free");
 
   // ── Groq API Key (for AI tools) ──────────────────────────────
   const [groqKey, setGroqKey] = useState("");
@@ -136,6 +137,18 @@ const Settings = () => {
       }
     };
     loadGroqKey();
+  }, []);
+
+    // Load user's subscription plan
+  useEffect(() => {
+    const loadUserPlan = async () => {
+      const { data } = await supabase.from("profiles").select("plan, plan_type").single();
+      if (data) {
+        const plan = (data.plan || data.plan_type || "free").toLowerCase();
+        setUserPlan(plan);
+      }
+    };
+    loadUserPlan();
   }, []);
 
   const handleSaveGroqKey = async () => {
@@ -529,7 +542,7 @@ const Settings = () => {
           <CardContent>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="font-semibold">Free Plan</p>
+                <p className="font-semibold"{userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plann</p>
                 <p className="text-xs text-muted-foreground">3 AI generations per day</p>
               </div>
               <Badge className="gradient-primary text-primary-foreground">Current</Badge>
