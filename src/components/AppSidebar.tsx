@@ -47,6 +47,7 @@ const utilNav = [
 
 const bottomItems = [
   { title: "Profile", url: "/profile", icon: User },
+    { title: "Admin", url: "/admin", icon: Shield },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
