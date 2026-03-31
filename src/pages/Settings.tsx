@@ -95,15 +95,18 @@ const Settings = () => {
   const [prefs, setPrefs] = useState(() => loadPrefs());
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains("dark"));
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-    const [userPlan, setUserPlan] = useState<string>("free");
 
-  // ── Groq API Key (for AI tools) ──────────────────────────────
+  // User Plan & Credit State
+  const [userPlan, setUserPlan] = useState<string>("free");
+  const [userCredits, setUserCredits] = useState<number>(0);
+
+  // Groq API Key state
   const [groqKey, setGroqKey] = useState("");
   const [savedGroqKey, setSavedGroqKey] = useState("");
   const [savingGroqKey, setSavingGroqKey] = useState(false);
   const [clearingGroqKey, setClearingGroqKey] = useState(false);
 
-  // ── Provider / Platform state ────────────────────────────────
+  // Provider / Platform state
   const [providerState, setProviderState] = useState<Record<Provider, ProviderState>>(() => createInitialProviderState());
   const [loadingKeys, setLoadingKeys] = useState(true);
   const [savingProvider, setSavingProvider] = useState<Provider | null>(null);
@@ -127,6 +130,22 @@ const Settings = () => {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
+  // Load user's subscription plan and credits
+  useEffect(() => {
+    const loadUserPlan = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("plan, plan_type, credits")
+        .single();
+      if (data) {
+        const planName = (data.plan || data.plan_type || "free").toLowerCase();
+        setUserPlan(planName);
+        setUserCredits(data.credits || 0);
+      }
+    };
+    loadUserPlan();
+  }, []);
+
   // Load saved Groq key from profile
   useEffect(() => {
     const loadGroqKey = async () => {
@@ -137,18 +156,6 @@ const Settings = () => {
       }
     };
     loadGroqKey();
-  }, []);
-
-    // Load user's subscription plan
-  useEffect(() => {
-    const loadUserPlan = async () => {
-      const { data } = await supabase.from("profiles").select("plan, plan_type").single();
-      if (data) {
-        const plan = (data.plan || data.plan_type || "free").toLowerCase();
-        setUserPlan(plan);
-      }
-    };
-    loadUserPlan();
   }, []);
 
   const handleSaveGroqKey = async () => {
@@ -201,11 +208,7 @@ const Settings = () => {
           next[provider] = { ...next[provider], hasKey: !!entry.hasKey, maskedKey: entry.maskedKey || "", isActive: !!entry.isActive, modelPreference: entry.modelPreference || "" };
         }
         setProviderState(next);
-      } catch {
-        // silently fail — non-critical
-      } finally {
-        setLoadingKeys(false);
-      }
+      } catch { /* Fail silently */ } finally { setLoadingKeys(false); }
     };
     loadApiKeys();
   }, []);
@@ -223,11 +226,7 @@ const Settings = () => {
           next[platform] = { ...next[platform], platformName: entry.platformName || next[platform].platformName, hasAccessToken: !!entry.hasAccessToken, maskedToken: entry.maskedToken || "", storeUrl: entry.settings?.store_url || "", isActive: entry.isActive ?? true, productsSynced: entry.productsSynced ?? 0, lastSyncedAt: entry.lastSyncedAt || null };
         }
         setPlatformState(next);
-      } catch {
-        // silently fail
-      } finally {
-        setLoadingPlatforms(false);
-      }
+      } catch { /* Fail silently */ } finally { setLoadingPlatforms(false); }
     };
     loadPlatformIntegrations();
   }, []);
@@ -258,9 +257,7 @@ const Settings = () => {
       toast({ title: `${providerLabels[provider]} key saved` });
     } catch (err: any) {
       toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    } finally {
-      setSavingProvider(null);
-    }
+    } finally { setSavingProvider(null); }
   };
 
   const handleDeleteProvider = async (provider: Provider) => {
@@ -272,9 +269,7 @@ const Settings = () => {
       toast({ title: `${providerLabels[provider]} key removed` });
     } catch (err: any) {
       toast({ title: "Delete failed", description: err.message, variant: "destructive" });
-    } finally {
-      setDeletingProvider(null);
-    }
+    } finally { setDeletingProvider(null); }
   };
 
   const handleActivateProvider = async (provider: Provider) => {
@@ -291,9 +286,7 @@ const Settings = () => {
       toast({ title: `${providerLabels[provider]} is now active` });
     } catch (err: any) {
       toast({ title: "Activation failed", description: err.message, variant: "destructive" });
-    } finally {
-      setActivatingProvider(null);
-    }
+    } finally { setActivatingProvider(null); }
   };
 
   const handleDeleteAccount = () => {
@@ -316,9 +309,7 @@ const Settings = () => {
       toast({ title: `${platformLabels[platform]} connected` });
     } catch (err: any) {
       toast({ title: "Connection failed", description: err.message, variant: "destructive" });
-    } finally {
-      setSavingPlatform(null);
-    }
+    } finally { setSavingPlatform(null); }
   };
 
   const handleDeletePlatform = async (platform: Platform) => {
@@ -330,9 +321,7 @@ const Settings = () => {
       toast({ title: `${platformLabels[platform]} disconnected` });
     } catch (err: any) {
       toast({ title: "Disconnect failed", description: err.message, variant: "destructive" });
-    } finally {
-      setDeletingPlatform(null);
-    }
+    } finally { setDeletingPlatform(null); }
   };
 
   return (
@@ -376,15 +365,15 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* ── YOUR GROQ API KEY ── */}
+        {/* Your Groq API Key Section */}
         <Card className="border-primary/30">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary" /> Your Groq API Key
             </CardTitle>
             <CardDescription>
-              Add your own free Groq API key to use unlimited AI generation with all tools.
-              Get a free key at{" "}
+              Add your own free Groq API key to use unlimited AI generation.
+              Get one at{" "}
               <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-primary underline">
                 console.groq.com
               </a>
@@ -415,25 +404,18 @@ const Settings = () => {
                 </Button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Your key is stored securely in your profile and only used for your account's AI generations.
-              If you don't add one, the platform's shared key will be used.
-            </p>
           </CardContent>
         </Card>
 
         {/* Other API Keys */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><Key className="w-4 h-4" /> Other AI Provider Keys</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2"><Key className="w-4 h-4" /> Other AI Providers</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Save additional provider keys. If you save one, it activates for AI answers alongside your Groq key.
-            </p>
             {loadingKeys ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading saved provider keys...
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading keys...
               </div>
             ) : (
               <div className="grid gap-4">
@@ -442,34 +424,21 @@ const Settings = () => {
                   const busy = savingProvider === provider || deletingProvider === provider || activatingProvider === provider;
                   return (
                     <div key={provider} className="rounded-lg border p-4 space-y-3">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{providerLabels[provider]}</p>
                           {state.isActive && <Badge>Active</Badge>}
-                          {state.hasKey && !state.isActive && <Badge variant="secondary">Saved</Badge>}
                         </div>
-                        {state.hasKey && <p className="text-xs text-muted-foreground">Saved: {state.maskedKey || "Available"}</p>}
+                        {state.hasKey && <p className="text-xs text-muted-foreground">{state.maskedKey}</p>}
                       </div>
                       <div className="grid md:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label>{providerLabels[provider]} API Key</Label>
-                          <Input type="password" placeholder={providerPlaceholders[provider]} value={state.apiKey} onChange={(e) => updateProviderField(provider, "apiKey", e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Model Preference</Label>
-                          <Input placeholder={modelPlaceholders[provider]} value={state.modelPreference} onChange={(e) => updateProviderField(provider, "modelPreference", e.target.value)} />
-                        </div>
+                        <Input type="password" placeholder={providerPlaceholders[provider]} value={state.apiKey} onChange={(e) => updateProviderField(provider, "apiKey", e.target.value)} />
+                        <Input placeholder={modelPlaceholders[provider]} value={state.modelPreference} onChange={(e) => updateProviderField(provider, "modelPreference", e.target.value)} />
                       </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <Button onClick={() => handleSaveProvider(provider)} disabled={busy}>
-                          {savingProvider === provider ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : "Save Key"}
-                        </Button>
-                        <Button variant="outline" onClick={() => handleActivateProvider(provider)} disabled={busy || !state.hasKey}>
-                          {activatingProvider === provider ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Activating...</> : "Use This Provider"}
-                        </Button>
-                        <Button variant="outline" onClick={() => handleDeleteProvider(provider)} disabled={busy || !state.hasKey}>
-                          {deletingProvider === provider ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Removing...</> : "Remove Key"}
-                        </Button>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleSaveProvider(provider)} disabled={busy}>Save</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleActivateProvider(provider)} disabled={busy || !state.hasKey}>Activate</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleDeleteProvider(provider)} disabled={busy || !state.hasKey}>Remove</Button>
                       </div>
                     </div>
                   );
@@ -485,10 +454,9 @@ const Settings = () => {
             <CardTitle className="text-base flex items-center gap-2"><Globe className="w-4 h-4" /> Platform Connections</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">Connect your selling platforms for publishing and syncing.</p>
             {loadingPlatforms ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading platform connections...
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading platforms...
               </div>
             ) : (
               <div className="grid gap-4">
@@ -497,34 +465,14 @@ const Settings = () => {
                   const busy = savingPlatform === platform || deletingPlatform === platform;
                   return (
                     <div key={platform} className="rounded-lg border p-4 space-y-3">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{platformLabels[platform]}</p>
-                          {state.hasAccessToken ? <Badge>Connected</Badge> : <Badge variant="secondary">Not Connected</Badge>}
-                        </div>
-                        {state.hasAccessToken && <p className="text-xs text-muted-foreground">Token: {state.maskedToken || "Saved"}{state.productsSynced > 0 ? ` · ${state.productsSynced} synced` : ""}</p>}
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">{platformLabels[platform]}</p>
+                        {state.hasAccessToken ? <Badge>Connected</Badge> : <Badge variant="secondary">Disconnected</Badge>}
                       </div>
-                      <div className="grid md:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label>{platformLabels[platform]} Display Name</Label>
-                          <Input value={state.platformName} onChange={(e) => updatePlatformField(platform, "platformName", e.target.value)} placeholder={platformLabels[platform]} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>{platformTokenLabels[platform]}</Label>
-                          <Input type="password" value={state.accessToken} onChange={(e) => updatePlatformField(platform, "accessToken", e.target.value)} placeholder="Paste your token here" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Store URL</Label>
-                        <Input value={state.storeUrl} onChange={(e) => updatePlatformField(platform, "storeUrl", e.target.value)} placeholder="https://your-store-url" />
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <Button onClick={() => handleSavePlatform(platform)} disabled={busy}>
-                          {savingPlatform === platform ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : state.hasAccessToken ? "Update Connection" : "Connect"}
-                        </Button>
-                        <Button variant="outline" onClick={() => handleDeletePlatform(platform)} disabled={busy || !state.hasAccessToken}>
-                          {deletingPlatform === platform ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Disconnecting...</> : "Disconnect"}
-                        </Button>
+                      <Input type="password" value={state.accessToken} onChange={(e) => updatePlatformField(platform, "accessToken", e.target.value)} placeholder="Access Token" />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleSavePlatform(platform)} disabled={busy}>Connect</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleDeletePlatform(platform)} disabled={busy || !state.hasAccessToken}>Disconnect</Button>
                       </div>
                     </div>
                   );
@@ -542,25 +490,31 @@ const Settings = () => {
           <CardContent>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="font-semibold"{userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plann</p>
-                <p className="text-xs text-muted-foreground">3 AI generations per day</p>
+                <p className="font-semibold">
+                  {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plan
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {userPlan === "free" 
+                    ? "3 AI generations per day" 
+                    : `${userCredits} credits remaining`}
+                </p>
               </div>
               <Badge className="gradient-primary text-primary-foreground">Current</Badge>
             </div>
             <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full gradient-primary text-primary-foreground btn-animate">Upgrade Plan</Button>
+                <Button className="w-full gradient-primary text-primary-foreground">Upgrade Plan</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Choose a Plan</DialogTitle></DialogHeader>
                 <div className="grid gap-3 py-4">
                   {plans.map(p => (
-                    <div key={p.name} className={`flex items-center justify-between p-4 rounded-lg border ${p.current ? "border-primary bg-primary/5" : "border-border"}`}>
+                    <div key={p.name} className={`flex items-center justify-between p-4 rounded-lg border ${p.name.toLowerCase() === userPlan ? "border-primary bg-primary/5" : "border-border"}`}>
                       <div>
                         <p className="font-display font-semibold">{p.name}</p>
                         <p className="text-sm text-muted-foreground">{p.price}</p>
                       </div>
-                      {p.current ? (
+                      {p.name.toLowerCase() === userPlan ? (
                         <Badge variant="secondary"><Check className="w-3 h-3 mr-1" />Current</Badge>
                       ) : (
                         <Button size="sm" variant="outline" onClick={() => { setUpgradeOpen(false); toast({ title: "Coming soon" }); }}>Select</Button>
