@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { PlanGate } from "@/components/PlanGate";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,28 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sparkles, Loader2, Copy, Download, Save, Clock } from "lucide-react";
+import { Sparkles, Clock, Copy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ToolConfig } from "@/config/tools";
-import { supabase } from "@/integrations/supabase/client";
 import { EmptyState } from "@/components/EmptyState";
+import { AIGenerator } from "@/components/ai/AIGenerator"; // Import your new streaming component
+import { Button } from "@/components/ui/button";
 
-const ACTIVITY_KEY = "creatorlaunch_activity";
 const HISTORY_KEY = "creatorlaunch_tool_history";
-
-function addActivity(tool: string) {
-  try {
-    const activity = JSON.parse(localStorage.getItem(ACTIVITY_KEY) || "[]");
-    activity.unshift({
-      id: crypto.randomUUID(),
-      action: "Generated content",
-      tool,
-      time: new Date().toLocaleString(),
-    });
-    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activity.slice(0, 50)));
-  } catch {}
-}
 
 function getToolHistory(slug: string): { output: string; time: string }[] {
   try {
@@ -46,290 +32,131 @@ function getToolHistory(slug: string): { output: string; time: string }[] {
   }
 }
 
-function saveToolHistory(slug: string, output: string) {
-  try {
-    const all = JSON.parse(localStorage.getItem(HISTORY_KEY) || "{}");
-    const entries = all[slug] || [];
-    entries.unshift({ output, time: new Date().toLocaleString() });
-    all[slug] = entries.slice(0, 10);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(all));
-  } catch {}
-}
-
-function stripHtml(str: string): string {
-  return String(str)
-    .replace(/<[^>]*>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ")
-    .trim();
-}
-
-function formatOutput(result: any): string {
-  if (!result) return "";
-  if (typeof result === "string") return stripHtml(result);
-  if (result.output) return stripHtml(result.output);
-  if (result.text) return stripHtml(result.text);
-
-  if (Array.isArray(result)) {
-    return result.map((item: any, i: number) => {
-      const divider = "━".repeat(50);
-      const header = `\n${divider}\n  RESULT ${i + 1}\n${divider}`;
-      const fields = Object.entries(item)
-        .map(([k, v]) => {
-          const label = k
-            .replace(/([A-Z])/g, " $1")
-            .replace(/^./, s => s.toUpperCase())
-            .toUpperCase();
-          return `\n▸ ${label}:\n  ${stripHtml(String(v)).replace(/\n/g, "\n  ")}`;
-        })
-        .join("\n");
-      return header + fields;
-    }).join("\n\n");
-  }
-
-  const divider = "━".repeat(50);
-  return Object.entries(result)
-    .map(([k, v]) => {
-      if (v === null || v === undefined || v === "") return "";
-      const label = k
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, s => s.toUpperCase())
-        .toUpperCase();
-      const value =
-        typeof v === "object"
-          ? Object.entries(v as object)
-              .map(([sk, sv]) => `  • ${sk}: ${sv}`)
-              .join("\n")
-          : stripHtml(String(v));
-      return `\n${divider}\n  ${label}\n${divider}\n${value}`;
-    })
-    .filter(Boolean)
-    .join("\n")
-    .trim();
-}
-
 interface GenericToolPageProps {
   tool: ToolConfig;
 }
 
 function ToolContent({ tool }: GenericToolPageProps) {
   const [values, setValues] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-  const [output, setOutput] = useState("");
-  const [history] = useState(() => getToolHistory(tool.slug));
+  const [history, setHistory] = useState(() => getToolHistory(tool.slug));
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Sync history when a generation completes (triggered by a custom event or localstorage watch)
+  useEffect(() => {
+    const handleStorageChange = () => setHistory(getToolHistory(tool.slug));
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [tool.slug]);
 
   const handleChange = (name: string, value: string) =>
     setValues((prev) => ({ ...prev, [name]: value }));
 
-  const handleGenerate = async () => {
-    const allFilled = tool.fields.every((f) => values[f.name]?.trim());
-    if (!allFilled) {
-      toast({
-        title: "Missing fields",
-        description: "Please fill in all fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    setOutput("");
-
-    try {
-      // Get user's saved Groq API key from their profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_api_key")
-        .single();
-
-      const { data, error } = await supabase.functions.invoke("ai-generate", {
-        body: {
-          tool: tool.slug,
-          inputs: values,
-          toolTitle: tool.title,
-          toolDescription: tool.description,
-          category: tool.category,
-          userApiKey: profile?.user_api_key || null,
-        },
-      });
-
-      if (error) throw error;
-
-      const formatted = formatOutput(data?.result ?? data);
-      setOutput(formatted);
-      addActivity(tool.title);
-      saveToolHistory(tool.slug, formatted);
-      toast({ title: "Generated!", description: `${tool.title} results are ready.` });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to generate.";
-      toast({ title: "Error", description: message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(output);
-    toast({ title: "Copied!" });
-  };
-
-  const handleDownload = () => {
-    const blob = new Blob([output], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${tool.slug}-output.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Downloaded!" });
-  };
-
-  const handleSave = () => {
-    saveToolHistory(tool.slug, output);
-    toast({ title: "Saved!" });
-  };
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card className="card-animate">
-        <CardContent className="p-6 space-y-4">
-          {tool.fields.map((field) => (
-            <div key={field.name} className="space-y-1.5">
-              <Label>{field.label}</Label>
-              {field.type === "text" && (
-                <Input
-                  placeholder={field.placeholder}
-                  value={values[field.name] || ""}
-                  onChange={(e) => handleChange(field.name, e.target.value)}
-                />
-              )}
-              {field.type === "textarea" && (
-                <Textarea
-                  className="min-h-[100px]"
-                  placeholder={field.placeholder}
-                  value={values[field.name] || ""}
-                  onChange={(e) => handleChange(field.name, e.target.value)}
-                />
-              )}
-              {field.type === "select" && (
-                <Select
-                  value={values[field.name] || ""}
-                  onValueChange={(v) => handleChange(field.name, v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {field.options?.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          ))}
-          <Button
-            className="w-full gradient-primary text-primary-foreground btn-animate"
-            onClick={handleGenerate}
-            disabled={loading}
-          >
-            {loading ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
-            ) : (
-              <><Sparkles className="w-4 h-4 mr-2" /> Generate with AI</>
-            )}
-          </Button>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* LEFT COLUMN: INPUT FORM */}
+      <Card className="border-primary/10 shadow-sm h-fit">
+        <CardContent className="p-6 space-y-6">
+          <div className="space-y-4">
+            {tool.fields.map((field) => (
+              <div key={field.name} className="space-y-2">
+                <Label className="text-sm font-medium">{field.label}</Label>
+                {field.type === "text" && (
+                  <Input
+                    placeholder={field.placeholder}
+                    value={values[field.name] || ""}
+                    onChange={(e) => handleChange(field.name, e.target.value)}
+                    className="focus-visible:ring-primary"
+                  />
+                )}
+                {field.type === "textarea" && (
+                  <Textarea
+                    className="min-h-[120px] resize-none"
+                    placeholder={field.placeholder}
+                    value={values[field.name] || ""}
+                    onChange={(e) => handleChange(field.name, e.target.value)}
+                  />
+                )}
+                {field.type === "select" && (
+                  <Select
+                    value={values[field.name] || ""}
+                    onValueChange={(v) => handleChange(field.name, v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* STREAMING GENERATOR COMPONENT */}
+          <AIGenerator 
+            toolSlug={tool.slug} 
+            toolTitle={tool.title} 
+            fields={values} 
+          />
         </CardContent>
       </Card>
 
-      <AnimatePresence>
-        {loading || output ? (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-          >
-            <Card className="card-animate h-full">
-              <CardContent className="p-6">
-                {loading && !output ? (
-                  <div className="flex flex-col items-center justify-center h-full min-h-[200px] gap-3">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-full gradient-primary animate-pulse" />
-                      <Sparkles className="w-5 h-5 text-primary-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-sm text-muted-foreground animate-pulse">AI is generating...</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <h3 className="font-display font-semibold text-lg">Results</h3>
-                      <div className="flex gap-1.5 flex-wrap">
-                        <Button variant="outline" size="sm" onClick={handleCopy}>
-                          <Copy className="h-3 w-3 mr-1" /> Copy
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleDownload}>
-                          <Download className="h-3 w-3 mr-1" /> TXT
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleSave}>
-                          <Save className="h-3 w-3 mr-1" /> Save
+      {/* RIGHT COLUMN: RECENT HISTORY & TIPS */}
+      <div className="space-y-6">
+        <AnimatePresence mode="wait">
+          {history.length > 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" /> Recent Generations
+              </h3>
+              <div className="grid gap-4">
+                {history.map((h, i) => (
+                  <Card key={i} className="bg-muted/30 border-none group hover:bg-muted/50 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                          {h.time}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            navigator.clipboard.writeText(h.output);
+                            toast({ title: "Copied to clipboard" });
+                          }}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                    </div>
-                    <div className="bg-muted rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed max-h-[600px] overflow-y-auto font-mono">
-                      {output}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        ) : (
-          <div className="flex items-center">
-            <EmptyState
-              icon={Sparkles}
-              title="No results yet"
-              description="Fill in the fields and click Generate to see AI-powered results."
-            />
-          </div>
-        )}
-      </AnimatePresence>
-
-      {history.length > 0 && (
-        <div className="lg:col-span-2 mt-4">
-          <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
-            <Clock className="w-4 h-4" /> Recent Generations
-          </h3>
-          <div className="space-y-3">
-            {history.map((h, i) => (
-              <Card key={i} className="card-animate">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">{h.time}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs"
-                      onClick={() => {
-                        navigator.clipboard.writeText(h.output);
-                        toast({ title: "Copied!" });
-                      }}
-                    >
-                      <Copy className="h-3 w-3 mr-1" /> Copy
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
-                    {h.output}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+                      <p className="text-sm text-foreground/80 line-clamp-4 whitespace-pre-wrap leading-relaxed italic">
+                        "{h.output}"
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <div className="h-full min-h-[300px] flex items-center justify-center border-2 border-dashed border-muted rounded-xl">
+              <EmptyState
+                icon={Sparkles}
+                title="Ready to Create?"
+                description="Enter your details on the left and watch the AI work its magic in real-time."
+              />
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
