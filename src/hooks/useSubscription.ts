@@ -4,11 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 interface SubscriptionPlan {
   slug: string;
   name: string;
-  ai_generations_limit: number;
-  products_limit: number;
-  platforms_limit: number;
+  credits: number;
   custom_api_keys: boolean;
   marketplace_integrations: boolean;
+  priority_support: boolean;
+  features: Record<string, boolean>;
   tool_access: Record<string, boolean>;
   micro_tool_access: Record<string, boolean>;
 }
@@ -34,41 +34,62 @@ export const useSubscription = () => {
         `)
         .eq('user_id', user!.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
     },
   });
 
+  const { data: isAdmin } = useQuery({
+    queryKey: ['user-role', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user!.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return !!data;
+    },
+  });
+
   const plan: SubscriptionPlan = subscription?.plan || {
     slug: 'free',
     name: 'Free',
-    ai_generations_limit: 25,
-    products_limit: 3,
-    platforms_limit: 1,
+    credits: 10,
     custom_api_keys: false,
     marketplace_integrations: false,
+    priority_support: false,
+    features: {},
     tool_access: {},
     micro_tool_access: {},
   };
 
   const canAccessTool = (toolId: string): boolean => {
+    if (isAdmin) return true;
+    if (plan.slug === 'business' || plan.slug === 'pro') return true;
     return plan.tool_access?.[toolId] === true;
   };
 
   const canAccessMicroTool = (microToolId: string): boolean => {
+    if (isAdmin) return true;
+    if (plan.slug === 'business' || plan.slug === 'pro') return true;
     return plan.micro_tool_access?.[microToolId] === true;
   };
 
   const hasFeature = (feature: string): boolean => {
+    if (isAdmin) return true;
     switch (feature) {
       case 'custom_api_keys':
         return plan.custom_api_keys;
       case 'marketplace_integrations':
         return plan.marketplace_integrations;
+      case 'priority_support':
+        return plan.priority_support;
       default:
-        return false;
+        return plan.features?.[feature] === true;
     }
   };
 
@@ -76,11 +97,13 @@ export const useSubscription = () => {
     subscription,
     plan,
     isLoading,
+    isAdmin: !!isAdmin,
     canAccessTool,
     canAccessMicroTool,
     hasFeature,
     isPro: plan.slug === 'pro' || plan.slug === 'business',
     isBusiness: plan.slug === 'business',
     isFree: plan.slug === 'free',
+    creditsRemaining: subscription?.credits_remaining ?? 10,
   };
 };
