@@ -37,7 +37,7 @@ async function handlePdfExport() {
       doc.text(line, 15, y);
       y += 7;
     }
-    doc.save("creatorlaunch-export.pdf");
+    doc.save("creatorwand-export.pdf");
     toast({ title: "PDF Downloaded", description: "Your content has been exported as a PDF." });
   } catch {
     toast({ title: "PDF Export Failed", description: "Could not generate PDF. Please try again.", variant: "destructive" });
