@@ -495,7 +495,7 @@ export const tools: ToolConfig[] = [
     icon: CalendarDays,
     category: "business",
     fields: [
-      { name: "product", label: "Product / Brand", type: "text", placeholder: "e.g. CreatorLaunch" },
+      { name: "product", label: "Product / Brand", type: "text", placeholder: "e.g. CreatorWand" },
       { name: "duration", label: "Calendar Duration", type: "select", options: ["1 Week", "2 Weeks", "1 Month"] },
       { name: "platforms", label: "Platforms", type: "select", options: ["Instagram + TikTok", "Twitter + LinkedIn", "All Platforms", "YouTube + Blog"] },
     ],

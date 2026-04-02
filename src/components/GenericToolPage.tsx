@@ -21,7 +21,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { AIGenerator } from "@/components/AIGenerator"; // Import your new streaming component
 import { Button } from "@/components/ui/button";
 
-const HISTORY_KEY = "creatorlaunch_tool_history";
+const HISTORY_KEY = "creatorwand_tool_history";
 
 function getToolHistory(slug: string): { output: string; time: string }[] {
   try {

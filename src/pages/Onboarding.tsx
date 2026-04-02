@@ -130,7 +130,7 @@ const Onboarding = () => {
                     </Button>
                   )}
                 </div>
-                <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" onClick={() => { localStorage.setItem("creatorlaunch_onboarded", "true"); navigate("/dashboard"); }}>
+                <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" onClick={() => { localStorage.setItem("creatorwand_onboarded", "true"); navigate("/dashboard"); }}>
                   Skip for now
                 </button>
               </CardContent>

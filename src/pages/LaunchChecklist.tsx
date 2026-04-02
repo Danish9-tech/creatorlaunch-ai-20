@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CheckSquare, PartyPopper } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const STORAGE_KEY = "creatorlaunch_checklist";
+const STORAGE_KEY = "creatorwand_checklist";
 
 const checklist = [
   { category: "Product Creation", items: ["Product files finalized", "Product description written", "License created"] },

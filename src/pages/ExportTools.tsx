@@ -51,7 +51,7 @@ function handleGoogleDocs() {
     return;
   }
   const encoded = encodeURIComponent(content);
-  window.open(`https://docs.google.com/document/create?title=CreatorLaunch+Export&body=${encoded}`, "_blank");
+  window.open(`https://docs.google.com/document/create?title=CreatorWand+Export&body=${encoded}`, "_blank");
   toast({ title: "Opening Google Docs", description: "A new Google Doc is being created." });
 }
 
