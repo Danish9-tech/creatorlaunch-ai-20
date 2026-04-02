@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, FileText, FileSpreadsheet, StickyNote } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-const STORAGE_KEY = "creatorlaunch_last_output";
+const STORAGE_KEY = "creatorwand_last_output";
 
 function getLastOutput(): string {
   return localStorage.getItem(STORAGE_KEY) || "";
