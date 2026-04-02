@@ -226,7 +226,7 @@ export const tools: ToolConfig[] = [
       { name: "title", label: "Product Title", type: "text", placeholder: "e.g. Ultimate Digital Planner Bundle 2026" },
       { name: "style", label: "Slug Style", type: "select", options: ["Short & Clean", "Keyword-Rich", "Brand-Focused"] },
     ],
-    mockOutput: `🔗 **Generated Slugs**\n\n1. \`digital-planner-bundle-2026\` — Keyword-rich, SEO optimal\n2. \`ultimate-planner-bundle\` — Short & clean\n3. \`creatorlaunch-planner-2026\` — Brand-focused\n\n✅ Recommended: \`digital-planner-bundle-2026\`\n📏 Length: 28 chars (under 60 char limit)\n🔑 Contains 3 target keywords`,
+    mockOutput: `🔗 **Generated Slugs**\n\n1. \`digital-planner-bundle-2026\` — Keyword-rich, SEO optimal\n2. \`ultimate-planner-bundle\` — Short & clean\n3. \`creatorwand-planner-2026\` — Brand-focused\n\n✅ Recommended: \`digital-planner-bundle-2026\`\n📏 Length: 28 chars (under 60 char limit)\n🔑 Contains 3 target keywords`,
   },
   {
     slug: "faq-generator",
