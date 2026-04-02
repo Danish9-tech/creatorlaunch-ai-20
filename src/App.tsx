@@ -44,7 +44,7 @@ const Contact             = lazy(() => import("./pages/Contact"));
 // ── Loading fallback ───────────────────────────────────────────────────────────
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
-    <p className="text-muted-foreground animate-pulse">Loading CreatorLaunch AI...</p>
+    <p className="text-muted-foreground animate-pulse">Loading CreatorWand AI...</p>
   </div>
 );
 

@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
-export function ProtectedRoute() {
+interface ProtectedRouteProps {
+  children?: ReactNode;
+}
+
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
   useEffect(() => {
-    // onAuthStateChange fires immediately with current session
-    // This is more reliable than getSession() after a fresh navigation
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
@@ -36,6 +38,6 @@ export function ProtectedRoute() {
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  // Authenticated — render child routes
-  return <Outlet />;
+  // Authenticated — render children or outlet
+  return children ? <>{children}</> : <Outlet />;
 }
