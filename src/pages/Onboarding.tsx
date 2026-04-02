@@ -24,7 +24,7 @@ const Onboarding = () => {
 
   const handleFinish = () => {
     localStorage.setItem("creatorwand_onboarding", JSON.stringify({ niches: selectedNiches, platforms: selectedPlatforms, firstProduct: productName }));
-    localStorage.setItem("creatorlaunch_onboarded", "true");
+    localStorage.setItem("creatorwand_onboarded", "true");
     toast({ title: "🚀 Welcome aboard!", description: "Your workspace is ready. Let's create!" });
     navigate("/dashboard");
   };
