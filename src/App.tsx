@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import AdminDashboard from "@/pages/AdminDashboard";
 
 // ── Lazy-loaded pages (code splitting for performance) ──────────────────────────────
 const Index               = lazy(() => import("./pages/Index"));
@@ -36,6 +35,8 @@ const ExportTools         = lazy(() => import("./pages/ExportTools"));
 const Profile             = lazy(() => import("./pages/Profile"));
 const Settings            = lazy(() => import("./pages/Settings"));
 const ToolPage            = lazy(() => import("./pages/ToolPage"));
+const AdminDashboard      = lazy(() => import("./pages/AdminDashboard"));
+const MarketplaceConnect  = lazy(() => import("./pages/MarketplaceConnect"));
 // Legal pages
 const PrivacyPolicy       = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService      = lazy(() => import("./pages/TermsOfService"));
@@ -77,8 +78,6 @@ const App = () => (
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/contact" element={<Contact />} />
 
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-
             {/* Protected routes — require login */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
@@ -101,8 +100,10 @@ const App = () => (
               <Route path="/listing-translator" element={<ListingTranslator />} />
               <Route path="/launch-checklist" element={<LaunchChecklist />} />
               <Route path="/export-tools" element={<ExportTools />} />
+              <Route path="/marketplace" element={<MarketplaceConnect />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/tool/:toolId" element={<ToolPage />} />
             </Route>
 

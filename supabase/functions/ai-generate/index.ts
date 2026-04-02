@@ -43,43 +43,119 @@ serve(async (req) => {
     const authHeader = req.headers.get("authorization")?.replace("Bearer ", "")!;
     const { data: { user } } = await supabase.auth.getUser(authHeader);
 
-    if (!user) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    // 1. Credit Check
-    const { data: profile } = await supabase.from("profiles").select("credits").eq("id", user.id).single();
-    if (!profile || (profile.credits ?? 0) <= 0) {
-      return new Response(JSON.stringify({ error: "No credits left" }), { status: 403, headers: corsHeaders });
+    // 1. Check subscription and credits
+    const { data: subscription } = await supabase
+      .from("user_subscriptions")
+      .select("credits_remaining, plan:subscription_plans(slug, credits)")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    const planSlug = (subscription?.plan as any)?.slug || "free";
+    const creditsRemaining = subscription?.credits_remaining ?? 0;
+
+    // Check admin role (bypass all limits)
+    const { data: adminRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    const isAdmin = !!adminRole;
+    const isBusiness = planSlug === "business";
+    const hasUnlimited = isAdmin || isBusiness || creditsRemaining === -1;
+
+    if (!hasUnlimited && creditsRemaining <= 0) {
+      return new Response(JSON.stringify({ error: "No credits left. Upgrade your plan for more." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const body = await req.json();
     const toolSlug = body.tool;
     const systemPrompt = categoryPrompts[toolToCategory[toolSlug] || "default"];
 
-    // 2. Key Selection Logic
-    const { data: userKey } = await supabase.from("user_api_keys").select("*").eq("user_id", user.id).eq("is_active", true).maybeSingle();
-    
-    let apiKey = Deno.env.get("GROQ_API_KEY"); // Default Platform Key
-    let apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    let model = "llama-3.3-70b-versatile";
+    // 2. Hybrid API Key Logic: Check user's own key first, then fallback to platform
+    const { data: userKey } = await supabase
+      .from("user_api_keys")
+      .select("api_key_encrypted, provider, model_preference, is_active")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
 
-    if (userKey) {
-       // Logic to use User's specific Provider (OpenAI, Gemini, etc.)
-       // For brevity in this example, we assume they are OpenAI-compatible
-       apiKey = "DECRYPTED_USER_KEY_LOGIC_HERE"; 
-       model = userKey.model_preference || "gpt-4o-mini";
-       apiUrl = userKey.provider === "openai" ? "https://api.openai.com/v1/chat/completions" : apiUrl;
+    let apiKey = Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GROQ_API_KEY");
+    let apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    let model = "google/gemini-3-flash-preview";
+    let usingUserKey = false;
+
+    // If user has their own Groq key stored, use it directly
+    if (userKey && userKey.provider === "grok" && userKey.api_key_encrypted) {
+      // Decrypt user key (simplified — in production use proper encryption)
+      try {
+        const encryptionSecret = Deno.env.get("USER_API_KEYS_ENCRYPTION_SECRET");
+        if (encryptionSecret) {
+          // Use the manage-api-keys decryption logic
+          const [ivBase64, cipherBase64] = userKey.api_key_encrypted.split(".");
+          if (ivBase64 && cipherBase64) {
+            const secretBytes = new TextEncoder().encode(encryptionSecret);
+            const digest = await crypto.subtle.digest("SHA-256", secretBytes);
+            const key = await crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["decrypt"]);
+
+            const normalize = (s: string) => s.replace(/-/g, "+").replace(/_/g, "/");
+            const pad = (s: string) => s + "=".repeat((4 - (s.length % 4 || 4)) % 4);
+            const decode = (s: string) => Uint8Array.from(atob(pad(normalize(s))), c => c.charCodeAt(0));
+
+            const iv = decode(ivBase64);
+            const cipher = decode(cipherBase64);
+            const plainBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+            const decryptedKey = new TextDecoder().decode(plainBuffer);
+
+            apiKey = decryptedKey;
+            apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+            model = userKey.model_preference || "llama-3.3-70b-versatile";
+            usingUserKey = true;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not decrypt user key, falling back to platform key:", e);
+      }
     }
 
     // 3. Initiate Streaming Request
     const response = await fetch(apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
         model,
-        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(body.fields) }],
-        stream: true, // Crucial for responsive feel
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: JSON.stringify(body.fields) },
+        ],
+        stream: true,
       }),
     });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const errText = await response.text();
+      console.error("AI API error:", response.status, errText);
+      return new Response(JSON.stringify({ error: "AI generation failed" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // 4. Pass-through the Stream to Frontend
     const stream = new ReadableStream({
@@ -93,9 +169,13 @@ serve(async (req) => {
           controller.enqueue(value);
         }
 
-        // 5. Post-Generation Credit Deduction
-        if (!userKey) {
-          await supabase.from("profiles").update({ credits: profile.credits - 1 }).eq("id", user.id);
+        // 5. Post-Generation Credit Deduction (only if using platform key)
+        if (!usingUserKey && !hasUnlimited && subscription) {
+          await supabase
+            .from("user_subscriptions")
+            .update({ credits_remaining: creditsRemaining - 1 })
+            .eq("user_id", user.id)
+            .eq("status", "active");
         }
         controller.close();
       },
@@ -106,6 +186,6 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
