@@ -23,7 +23,7 @@ const Onboarding = () => {
   const togglePlatform = (p: string) => setSelectedPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
 
   const handleFinish = () => {
-    localStorage.setItem("creatorlaunch_onboarding", JSON.stringify({ niches: selectedNiches, platforms: selectedPlatforms, firstProduct: productName }));
+    localStorage.setItem("creatorwand_onboarding", JSON.stringify({ niches: selectedNiches, platforms: selectedPlatforms, firstProduct: productName }));
     localStorage.setItem("creatorlaunch_onboarded", "true");
     toast({ title: "🚀 Welcome aboard!", description: "Your workspace is ready. Let's create!" });
     navigate("/dashboard");
