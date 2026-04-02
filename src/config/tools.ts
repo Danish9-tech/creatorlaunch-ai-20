@@ -286,7 +286,7 @@ export const tools: ToolConfig[] = [
     icon: Layout,
     category: "visual",
     fields: [
-      { name: "product", label: "Product / Brand", type: "text", placeholder: "e.g. CreatorLaunch Planner" },
+      { name: "product", label: "Product / Brand", type: "text", placeholder: "e.g. CreatorWand Planner" },
       { name: "mood", label: "Mood", type: "select", options: ["Inspiring", "Professional", "Playful", "Luxurious", "Tech-Forward"] },
     ],
     mockOutput: `🖥️ **Hero Image Prompts**\n\n**Prompt 1 (Inspiring):**\n"Wide hero banner with sunrise gradient (peach to lavender). Floating 3D product mockups arranged dynamically. Subtle particle effects. Bold headline space on left, product display on right. 1920x600px."\n\n**Prompt 2 (Professional):**\n"Clean corporate hero with subtle mesh gradient background. Product screenshots in browser mockup frames. Minimal, sophisticated. Ample white space for text overlay."`,
