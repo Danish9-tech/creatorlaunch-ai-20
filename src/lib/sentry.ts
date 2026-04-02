@@ -1,5 +1,5 @@
 // src/lib/sentry.ts
-// Sentry Error Monitoring Configuration for CreatorLaunch AI
+// Sentry Error Monitoring Configuration for CreatorWand AI
 import * as Sentry from "@sentry/react";
 
 /**

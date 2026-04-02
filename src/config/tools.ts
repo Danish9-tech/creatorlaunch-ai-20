@@ -226,7 +226,7 @@ export const tools: ToolConfig[] = [
       { name: "title", label: "Product Title", type: "text", placeholder: "e.g. Ultimate Digital Planner Bundle 2026" },
       { name: "style", label: "Slug Style", type: "select", options: ["Short & Clean", "Keyword-Rich", "Brand-Focused"] },
     ],
-    mockOutput: `🔗 **Generated Slugs**\n\n1. \`digital-planner-bundle-2026\` — Keyword-rich, SEO optimal\n2. \`ultimate-planner-bundle\` — Short & clean\n3. \`creatorlaunch-planner-2026\` — Brand-focused\n\n✅ Recommended: \`digital-planner-bundle-2026\`\n📏 Length: 28 chars (under 60 char limit)\n🔑 Contains 3 target keywords`,
+    mockOutput: `🔗 **Generated Slugs**\n\n1. \`digital-planner-bundle-2026\` — Keyword-rich, SEO optimal\n2. \`ultimate-planner-bundle\` — Short & clean\n3. \`creatorwand-planner-2026\` — Brand-focused\n\n✅ Recommended: \`digital-planner-bundle-2026\`\n📏 Length: 28 chars (under 60 char limit)\n🔑 Contains 3 target keywords`,
   },
   {
     slug: "faq-generator",
@@ -286,7 +286,7 @@ export const tools: ToolConfig[] = [
     icon: Layout,
     category: "visual",
     fields: [
-      { name: "product", label: "Product / Brand", type: "text", placeholder: "e.g. CreatorLaunch Planner" },
+      { name: "product", label: "Product / Brand", type: "text", placeholder: "e.g. CreatorWand Planner" },
       { name: "mood", label: "Mood", type: "select", options: ["Inspiring", "Professional", "Playful", "Luxurious", "Tech-Forward"] },
     ],
     mockOutput: `🖥️ **Hero Image Prompts**\n\n**Prompt 1 (Inspiring):**\n"Wide hero banner with sunrise gradient (peach to lavender). Floating 3D product mockups arranged dynamically. Subtle particle effects. Bold headline space on left, product display on right. 1920x600px."\n\n**Prompt 2 (Professional):**\n"Clean corporate hero with subtle mesh gradient background. Product screenshots in browser mockup frames. Minimal, sophisticated. Ample white space for text overlay."`,
@@ -495,7 +495,7 @@ export const tools: ToolConfig[] = [
     icon: CalendarDays,
     category: "business",
     fields: [
-      { name: "product", label: "Product / Brand", type: "text", placeholder: "e.g. CreatorLaunch" },
+      { name: "product", label: "Product / Brand", type: "text", placeholder: "e.g. CreatorWand" },
       { name: "duration", label: "Calendar Duration", type: "select", options: ["1 Week", "2 Weeks", "1 Month"] },
       { name: "platforms", label: "Platforms", type: "select", options: ["Instagram + TikTok", "Twitter + LinkedIn", "All Platforms", "YouTube + Blog"] },
     ],

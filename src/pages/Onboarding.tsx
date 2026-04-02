@@ -23,8 +23,8 @@ const Onboarding = () => {
   const togglePlatform = (p: string) => setSelectedPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
 
   const handleFinish = () => {
-    localStorage.setItem("creatorlaunch_onboarding", JSON.stringify({ niches: selectedNiches, platforms: selectedPlatforms, firstProduct: productName }));
-    localStorage.setItem("creatorlaunch_onboarded", "true");
+    localStorage.setItem("creatorwand_onboarding", JSON.stringify({ niches: selectedNiches, platforms: selectedPlatforms, firstProduct: productName }));
+    localStorage.setItem("creatorwand_onboarded", "true");
     toast({ title: "🚀 Welcome aboard!", description: "Your workspace is ready. Let's create!" });
     navigate("/dashboard");
   };
@@ -130,7 +130,7 @@ const Onboarding = () => {
                     </Button>
                   )}
                 </div>
-                <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" onClick={() => { localStorage.setItem("creatorlaunch_onboarded", "true"); navigate("/dashboard"); }}>
+                <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" onClick={() => { localStorage.setItem("creatorwand_onboarded", "true"); navigate("/dashboard"); }}>
                   Skip for now
                 </button>
               </CardContent>

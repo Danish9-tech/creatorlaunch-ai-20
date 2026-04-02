@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type Plan = "free" | "starter" | "pro" | "business";
+export type Plan = "free" | "pro" | "business";
 
 export interface UsePlanGateOptions {
   toolId?: string;
@@ -16,6 +16,7 @@ export interface UsePlanGateResult {
   creditsExhausted: boolean;
   reason: string;
   upgradeUrl: string;
+  isAdmin: boolean;
 }
 
 const FREE_TOOLS = [
@@ -24,52 +25,82 @@ const FREE_TOOLS = [
 ];
 
 const PLAN_HIERARCHY: Record<Plan, number> = {
-  free: 0, starter: 1, pro: 2, business: 3,
+  free: 0, pro: 1, business: 2,
 };
 
 export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): UsePlanGateResult {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<Plan>("free");
-  const [credits, setCredits] = useState(0);
-  const [role, setRole] = useState("user");
+  const [credits, setCredits] = useState(10);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("plan, plan_type, credits, role")
-        .single();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
 
-      if (data) {
-        const userPlan = (data.plan || data.plan_type || "free") as Plan;
-        setPlan(userPlan);
-        setCredits(data.credits || 0);
-        setRole(data.role || "user");
+        // Check admin role
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (roleData) setIsAdmin(true);
+
+        // Check subscription
+        const { data: subData } = await supabase
+          .from("user_subscriptions")
+          .select("credits_remaining, plan:subscription_plans(slug)")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (subData) {
+          const planSlug = (subData.plan as any)?.slug || "free";
+          setPlan(planSlug as Plan);
+          setCredits(subData.credits_remaining ?? 0);
+        }
+      } catch (err) {
+        console.warn("[usePlanGate] Error:", err);
       }
       setLoading(false);
     };
     load();
   }, []);
 
-  const isAdmin = role === "admin" || role === "super_admin";
   const isPro = PLAN_HIERARCHY[plan] >= PLAN_HIERARCHY["pro"];
-  const creditsExhausted = credits <= 0 && plan === "free";
+  const isBusiness = plan === "business";
+  // Business plan has unlimited credits (credits_remaining = -1)
+  const creditsExhausted = credits === 0 && plan === "free";
 
   let allowed = false;
   let reason = "";
 
-  if (isAdmin || isPro) {
+  if (isAdmin || isBusiness) {
+    // Admins and Business users bypass all limits
     allowed = true;
+  } else if (isPro) {
+    // Pro users can access all tools
+    allowed = credits > 0 || credits === -1;
+    if (!allowed) reason = "You've used all your Pro credits this month. Credits reset monthly.";
   } else if (toolId && FREE_TOOLS.includes(toolId)) {
     allowed = !creditsExhausted;
-    if (creditsExhausted) reason = "You have used all your free credits. Upgrade to Pro for unlimited generations.";
+    if (creditsExhausted) reason = "You have used all your free credits. Upgrade to Pro for 500 generations/month.";
   } else if (requiredPlan) {
     allowed = PLAN_HIERARCHY[plan] >= PLAN_HIERARCHY[requiredPlan];
     if (!allowed) reason = `This feature requires the ${requiredPlan} plan or higher.`;
   } else {
+    // Default: free tool check
     allowed = !creditsExhausted;
-    if (!allowed) reason = "You have used all your free credits. Upgrade to Pro for unlimited access to all tools.";
-    else if (!isPro) reason = "This tool requires a Pro or Business plan.";
+    if (creditsExhausted) reason = "You have used all your free credits (10). Upgrade to Pro for 500 credits.";
+    else if (!isPro) {
+      // If it's not a free tool and user is on free plan
+      allowed = false;
+      reason = "This tool requires a Pro or Business plan.";
+    }
   }
 
   if (!allowed && !reason) {
@@ -84,5 +115,6 @@ export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): 
     creditsExhausted,
     reason,
     upgradeUrl: "/settings",
+    isAdmin,
   };
 }

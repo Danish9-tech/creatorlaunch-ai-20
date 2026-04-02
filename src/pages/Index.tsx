@@ -22,9 +22,9 @@ const steps = [
 ];
 
 const plans = [
-  { name: "Free", price: "$0", period: "/forever", features: ["3 AI generations/day", "Basic tools access", "1 product listing", "Community support"], cta: "Get Started", popular: false },
-  { name: "Pro", price: "$19", period: "/month", features: ["Unlimited AI generations", "All 40+ tools", "Unlimited listings", "Priority support", "Export to all formats", "Competitor analysis"], cta: "Start Pro Trial", popular: true },
-  { name: "Business", price: "$49", period: "/month", features: ["Everything in Pro", "Team collaboration", "API access", "Custom branding", "Dedicated account manager", "Advanced analytics"], cta: "Contact Sales", popular: false },
+  { name: "Free", price: "$0", period: "/forever", features: ["10 AI credits", "Basic tools access", "1 product listing", "Community support"], cta: "Get Started", popular: false },
+  { name: "Pro", price: "$19", period: "/month", features: ["500 AI credits/month", "All 40+ tools", "Unlimited listings", "Standard support", "Bring your own API key", "Export to all formats"], cta: "Start Pro Trial", popular: true },
+  { name: "Business", price: "$49", period: "/month", features: ["Unlimited AI credits", "Everything in Pro", "Marketplace integrations", "Priority support", "API access", "Advanced analytics"], cta: "Contact Sales", popular: false },
 ];
 
 const testimonials = [

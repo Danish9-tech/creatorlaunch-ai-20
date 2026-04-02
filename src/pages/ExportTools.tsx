@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, FileText, FileSpreadsheet, StickyNote } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-const STORAGE_KEY = "creatorlaunch_last_output";
+const STORAGE_KEY = "creatorwand_last_output";
 
 function getLastOutput(): string {
   return localStorage.getItem(STORAGE_KEY) || "";
@@ -37,7 +37,7 @@ async function handlePdfExport() {
       doc.text(line, 15, y);
       y += 7;
     }
-    doc.save("creatorlaunch-export.pdf");
+    doc.save("creatorwand-export.pdf");
     toast({ title: "PDF Downloaded", description: "Your content has been exported as a PDF." });
   } catch {
     toast({ title: "PDF Export Failed", description: "Could not generate PDF. Please try again.", variant: "destructive" });
@@ -51,7 +51,7 @@ function handleGoogleDocs() {
     return;
   }
   const encoded = encodeURIComponent(content);
-  window.open(`https://docs.google.com/document/create?title=CreatorLaunch+Export&body=${encoded}`, "_blank");
+  window.open(`https://docs.google.com/document/create?title=CreatorWand+Export&body=${encoded}`, "_blank");
   toast({ title: "Opening Google Docs", description: "A new Google Doc is being created." });
 }
 

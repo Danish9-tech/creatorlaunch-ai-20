@@ -43,6 +43,7 @@ const toolItems = [
 
 const utilNav = [
   { title: "Launch Checklist", url: "/launch-checklist", icon: CheckSquare },
+  { title: "Marketplace", url: "/marketplace", icon: Package },
 ];
 
 const bottomItems = [

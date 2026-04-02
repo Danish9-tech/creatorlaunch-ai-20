@@ -17,7 +17,7 @@ import { tools } from "@/config/tools";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 
-const ACTIVITY_KEY = "creatorlaunch_activity";
+const ACTIVITY_KEY = "creatorwand_activity";
 
 function getRecentNotifications() {
   try {

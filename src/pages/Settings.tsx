@@ -21,7 +21,7 @@ import { Key, Globe, Trash2, CreditCard, Check, Loader2, Zap } from "lucide-reac
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
-const PREFS_KEY = "creatorlaunch_prefs";
+const PREFS_KEY = "creatorwand_prefs";
 
 type Provider = "grok" | "openai" | "anthropic" | "gemini";
 type ProviderState = {

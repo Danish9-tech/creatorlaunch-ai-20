@@ -1,5 +1,5 @@
 -- =============================================================
--- CreatorLaunch AI - Complete Supabase Database Schema v2.0
+-- CreatorWand AI - Complete Supabase Database Schema v3.0
 -- Run this in: Supabase Dashboard > SQL Editor > New Query
 -- =============================================================
 

@@ -12,7 +12,7 @@ const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error(
-    "[CreatorLaunch] Missing Supabase env vars.\n" +
+    "[CreatorWand] Missing Supabase env vars.\n" +
     "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local"
   );
 }
