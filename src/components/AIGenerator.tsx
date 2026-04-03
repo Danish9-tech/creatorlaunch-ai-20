@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Zap, Copy, Check } from "lucide-react";
@@ -25,7 +24,7 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields }: Props) => {
   };
 
   const generateStream = async () => {
-    if (Object.values(fields).every(v => !v)) {
+    if (Object.values(fields).every((v) => !v)) {
       toast({ title: "Please fill in the fields first", variant: "destructive" });
       return;
     }
@@ -34,15 +33,13 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields }: Props) => {
     setResult("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token}`,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
             tool: toolSlug,
@@ -53,14 +50,21 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields }: Props) => {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Generation failed");
+        let errorMsg = "Generation failed";
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch {
+          errorMsg = `Generation failed (${response.status})`;
+        }
+        throw new Error(errorMsg);
       }
 
+      // The edge function now returns plain text (content tokens only)
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
-      if (!reader) return;
+      if (!reader) throw new Error("No response stream");
 
       while (true) {
         const { done, value } = await reader.read();
@@ -106,7 +110,11 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields }: Props) => {
                 className="h-8 w-8"
                 onClick={copyToClipboard}
               >
-                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
 
@@ -116,7 +124,6 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields }: Props) => {
               </div>
             </div>
 
-            {/* List to Marketplace button */}
             <div className="mt-4 pt-4 border-t border-border flex justify-end">
               <ListToMarketplace generatedContent={result} toolTitle={toolTitle} />
             </div>
