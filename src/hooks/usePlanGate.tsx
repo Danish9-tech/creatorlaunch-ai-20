@@ -49,44 +49,64 @@ export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): 
           return;
         }
 
-        // Check admin role
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .eq("role", "admin")
-          .maybeSingle();
+        // Step 1: Check admin role — ISOLATED so failures don't stop plan check
+        try {
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", user.id)
+            .eq("role", "admin")
+            .maybeSingle();
+          if (roleData) {
+            setIsAdmin(true);
+            setPlan("business"); // Admins always get business-level access
+            setCredits(-1);
+            setLoading(false);
+            return; // Admin: skip further checks
+          }
+        } catch (adminErr) {
+          console.warn("[usePlanGate] Admin check failed (non-fatal):", adminErr);
+        }
 
-        if (roleData) setIsAdmin(true);
+        // Step 2: Check active subscription — use plan_slug directly (no join)
+        try {
+          const { data: subData, error: subError } = await supabase
+            .from("user_subscriptions")
+            .select("credits_remaining, plan_slug")
+            .eq("user_id", user.id)
+            .eq("status", "active")
+            .maybeSingle();
 
-        // Check subscription - use plan_slug directly (no nested join needed)
-        const { data: subData } = await supabase
-          .from("user_subscriptions")
-          .select("credits_remaining, plan_slug")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .maybeSingle();
+          if (!subError && subData?.plan_slug) {
+            const planSlug = subData.plan_slug as Plan;
+            setPlan(planSlug);
+            setCredits(subData.credits_remaining ?? 0);
+            setLoading(false);
+            return;
+          }
+        } catch (subErr) {
+          console.warn("[usePlanGate] Subscription check failed (non-fatal):", subErr);
+        }
 
-        if (subData) {
-          const planSlug = subData.plan_slug || "free";
-          setPlan(planSlug as Plan);
-          setCredits(subData.credits_remaining ?? 0);
-        } else {
-          // Fallback: read from profiles table
+        // Step 3: Final fallback — read plan directly from profiles table
+        try {
           const { data: profileData } = await supabase
             .from("profiles")
             .select("plan, credits")
             .eq("id", user.id)
             .maybeSingle();
 
-          if (profileData) {
+          if (profileData?.plan) {
             setPlan((profileData.plan || "free") as Plan);
             setCredits(profileData.credits ?? 0);
           }
+        } catch (profileErr) {
+          console.warn("[usePlanGate] Profile check failed:", profileErr);
         }
       } catch (err) {
-        console.warn("[usePlanGate] Error:", err);
+        console.warn("[usePlanGate] Auth error:", err);
       }
+
       setLoading(false);
     };
 
@@ -96,7 +116,7 @@ export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): 
   const isPro = PLAN_HIERARCHY[plan] >= PLAN_HIERARCHY["pro"];
   const isBusiness = plan === "business";
 
-  // Business plan has unlimited credits (credits_remaining = -1)
+  // credits === -1 means unlimited (business/admin)
   const creditsExhausted = credits === 0 && plan === "free";
 
   let allowed = false;
@@ -106,7 +126,6 @@ export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): 
     // Admins and Business users bypass all limits
     allowed = true;
   } else if (isPro) {
-    // Pro users can access all tools
     allowed = credits > 0 || credits === -1;
     if (!allowed) reason = "You've used all your Pro credits this month. Credits reset monthly.";
   } else if (toolId && FREE_TOOLS.includes(toolId)) {
@@ -116,12 +135,10 @@ export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): 
     allowed = PLAN_HIERARCHY[plan] >= PLAN_HIERARCHY[requiredPlan];
     if (!allowed) reason = `This feature requires the ${requiredPlan} plan or higher.`;
   } else {
-    // Default: free tool check
     allowed = !creditsExhausted;
     if (creditsExhausted)
       reason = "You have used all your free credits (10). Upgrade to Pro for 500 credits.";
     else if (!isPro) {
-      // If it's not a free tool and user is on free plan
       allowed = false;
       reason = "This tool requires a Pro or Business plan.";
     }
