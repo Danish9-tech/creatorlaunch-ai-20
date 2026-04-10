@@ -36,8 +36,13 @@ const CompetitorAnalyzer = () => {
       });
       if (error) throw error;
       const result = data?.result;
-      if (Array.isArray(result)) setCompetitors(result);
-      else if (result?.text) toast({ title: "Results", description: result.text });
+      if (Array.isArray(result)) {
+        setCompetitors(result);
+      } else if (typeof result === "string") {
+        toast({ title: "Results", description: result.slice(0, 200) });
+      } else {
+        toast({ title: "No results returned", variant: "destructive" });
+      }
     } catch (err: any) {
       toast({ title: "Generation failed", description: err.message, variant: "destructive" });
     } finally {
@@ -47,7 +52,7 @@ const CompetitorAnalyzer = () => {
 
   return (
     <DashboardLayout>
-      <ToolPageWrapper title="Competitor Analyzer" description="Analyze your competition and find market gaps.">
+      <ToolPageWrapper title="Competitor Analyzer" description="Analyze your competition and find your edge.">
         <div className="space-y-6">
           <Card>
             <CardContent className="p-6 space-y-4">
@@ -69,37 +74,28 @@ const CompetitorAnalyzer = () => {
                 </div>
               </div>
               <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate} disabled={loading}>
-                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <><Sparkles className="w-4 h-4 mr-2" /> Analyze Competitors</>}
+                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <><BarChart3 className="w-4 h-4 mr-2" /> Analyze Competitors</>}
               </Button>
             </CardContent>
           </Card>
-
           {competitors.length > 0 && (
             <div className="grid md:grid-cols-2 gap-4">
               {competitors.map((c, i) => (
                 <Card key={i} className="card-animate">
                   <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-base">
-                        <BarChart3 className="w-4 h-4 text-primary" />{c.name}
-                      </span>
-                      <span className="text-sm font-bold text-primary">{c.price}</span>
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span>{c.name}</span>
+                      <span className="text-sm font-normal text-muted-foreground">{c.price}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="flex items-start gap-2">
-                      <TrendingUp className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Strength</p>
-                        <p className="text-sm">{c.strength}</p>
-                      </div>
+                    <div>
+                      <p className="text-xs font-semibold text-green-600 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Strength</p>
+                      <p className="text-sm text-muted-foreground">{c.strength}</p>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <TrendingDown className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Weakness</p>
-                        <p className="text-sm">{c.weakness}</p>
-                      </div>
+                    <div>
+                      <p className="text-xs font-semibold text-red-500 flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Weakness</p>
+                      <p className="text-sm text-muted-foreground">{c.weakness}</p>
                     </div>
                   </CardContent>
                 </Card>
