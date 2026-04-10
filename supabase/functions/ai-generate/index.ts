@@ -38,10 +38,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user from auth header
     const token = authHeader?.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token || "");
-    
+
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
@@ -49,7 +48,6 @@ serve(async (req) => {
       );
     }
 
-    // Get user profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
@@ -66,37 +64,27 @@ serve(async (req) => {
     const body = await req.json();
     const toolSlug: string = body.tool || "";
     const toolTitle: string = body.toolTitle || toolSlug;
-    const fields: Record<string, any> = body.fields || body.inputs || {};
+    const fields: Record<string, string> = body.fields || body.inputs || {};
 
-    // Check if user has their own API key
     const userHasOwnKey = profile.user_api_key && profile.user_api_key.trim() !== "";
-    
-    // If user doesn't have own API key, check plan limits
+
     if (!userHasOwnKey) {
       const plan = profile.plan || "free";
       const creditsUsed = profile.credits_used || 0;
-      const credits = profile.credits || 50;
-      
-      // Plan limits: free=10, pro=100, premium=unlimited
       const planLimits: Record<string, number> = {
         free: 10,
         pro: 100,
         premium: 999999,
       };
-      
       const limit = planLimits[plan] || 10;
-      
       if (creditsUsed >= limit) {
         return new Response(
-          JSON.stringify({ 
-            error: `Generation limit reached. You've used ${creditsUsed}/${limit} generations. Upgrade your plan or add your own API key.`
-          }),
+          JSON.stringify({ error: `Generation limit reached. You've used ${creditsUsed}/${limit} generations. Upgrade your plan or add your own API key.` }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
 
-    // Build prompt
     const fieldEntries = Object.entries(fields)
       .filter(([, v]) => v !== "" && v !== null && v !== undefined)
       .map(([k, v]) => `${k}: ${v}`)
@@ -106,15 +94,11 @@ serve(async (req) => {
     const systemPrompt = categoryPrompts[category];
     const userPrompt = `Tool: ${toolTitle}\n\nInputs:\n${fieldEntries}\n\nProvide a comprehensive, well-structured response.`;
 
-    // Determine which API key to use
     let apiKey: string;
-    let apiProvider = profile.user_api_provider || "groq";
-    
     if (userHasOwnKey) {
       apiKey = profile.user_api_key;
     } else {
       apiKey = Deno.env.get("GROQ_API_KEY") || "";
-      apiProvider = "groq";
     }
 
     if (!apiKey) {
@@ -124,7 +108,6 @@ serve(async (req) => {
       );
     }
 
-    // Call Groq API
     const groqResponse = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -139,7 +122,7 @@ serve(async (req) => {
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
           ],
-          stream: true,
+          stream: false,
           temperature: 0.7,
           max_tokens: 2000,
         }),
@@ -155,58 +138,30 @@ serve(async (req) => {
       );
     }
 
-    // Increment generation count only if using platform API key
+    const groqData = await groqResponse.json();
+    const content = groqData.choices?.[0]?.message?.content || "";
+
     if (!userHasOwnKey) {
       await supabase.rpc("increment_generation_count", { user_uuid: user.id });
     }
 
-    // Stream response
-    const reader = groqResponse.body?.getReader();
-    if (!reader) {
-      return new Response(
-        JSON.stringify({ error: "No response stream" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Try to parse as JSON array (for idea-generator etc), otherwise return as text
+    let result: unknown = content;
+    try {
+      const jsonMatch = content.match(/\[([\s\S]*?)\]/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed)) result = parsed;
+      }
+    } catch {
+      // keep as text
     }
 
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        let buffer = "";
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
+    return new Response(
+      JSON.stringify({ result }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
 
-            let newlineIdx: number;
-            while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
-              let line = buffer.slice(0, newlineIdx);
-              buffer = buffer.slice(newlineIdx + 1);
-              if (line.endsWith("\r")) line = line.slice(0, -1);
-              if (!line.startsWith("data: ")) continue;
-              const jsonStr = line.slice(6).trim();
-              if (jsonStr === "[DONE]") continue;
-              try {
-                const parsed = JSON.parse(jsonStr);
-                const content = parsed.choices?.[0]?.delta?.content;
-                if (content) {
-                  controller.enqueue(encoder.encode(content));
-                }
-              } catch { }
-            }
-          }
-        } catch (e) {
-          console.error("Stream error:", e);
-        }
-        controller.close();
-      },
-    });
-
-    return new Response(stream, {
-      headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
-    });
   } catch (error) {
     console.error("Edge function error:", error);
     return new Response(
