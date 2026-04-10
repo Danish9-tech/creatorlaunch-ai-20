@@ -20,12 +20,18 @@ export interface UsePlanGateResult {
 }
 
 const FREE_TOOLS = [
-  "idea-generator", "niche-finder", "product-name-generator",
-  "title-optimizer", "tag-generator", "faq-generator",
+  "idea-generator",
+  "niche-finder",
+  "product-name-generator",
+  "title-optimizer",
+  "tag-generator",
+  "faq-generator",
 ];
 
 const PLAN_HIERARCHY: Record<Plan, number> = {
-  free: 0, pro: 1, business: 2,
+  free: 0,
+  pro: 1,
+  business: 2,
 };
 
 export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): UsePlanGateResult {
@@ -38,7 +44,10 @@ export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): 
     const load = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoading(false); return; }
+        if (!user) {
+          setLoading(false);
+          return;
+        }
 
         // Check admin role
         const { data: roleData } = await supabase
@@ -50,29 +59,43 @@ export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): 
 
         if (roleData) setIsAdmin(true);
 
-        // Check subscription
+        // Check subscription - use plan_slug directly (no nested join needed)
         const { data: subData } = await supabase
           .from("user_subscriptions")
-          .select("credits_remaining, plan:subscription_plans(slug)")
+          .select("credits_remaining, plan_slug")
           .eq("user_id", user.id)
           .eq("status", "active")
           .maybeSingle();
 
         if (subData) {
-          const planSlug = (subData.plan as any)?.slug || "free";
+          const planSlug = subData.plan_slug || "free";
           setPlan(planSlug as Plan);
           setCredits(subData.credits_remaining ?? 0);
+        } else {
+          // Fallback: read from profiles table
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("plan, credits")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (profileData) {
+            setPlan((profileData.plan || "free") as Plan);
+            setCredits(profileData.credits ?? 0);
+          }
         }
       } catch (err) {
         console.warn("[usePlanGate] Error:", err);
       }
       setLoading(false);
     };
+
     load();
   }, []);
 
   const isPro = PLAN_HIERARCHY[plan] >= PLAN_HIERARCHY["pro"];
   const isBusiness = plan === "business";
+
   // Business plan has unlimited credits (credits_remaining = -1)
   const creditsExhausted = credits === 0 && plan === "free";
 
@@ -95,7 +118,8 @@ export function usePlanGate({ toolId, requiredPlan }: UsePlanGateOptions = {}): 
   } else {
     // Default: free tool check
     allowed = !creditsExhausted;
-    if (creditsExhausted) reason = "You have used all your free credits (10). Upgrade to Pro for 500 credits.";
+    if (creditsExhausted)
+      reason = "You have used all your free credits (10). Upgrade to Pro for 500 credits.";
     else if (!isPro) {
       // If it's not a free tool and user is on free plan
       allowed = false;
