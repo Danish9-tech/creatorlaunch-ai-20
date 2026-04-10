@@ -35,8 +35,13 @@ const TrendFinder = () => {
       });
       if (error) throw error;
       const result = data?.result;
-      if (Array.isArray(result)) setTrends(result);
-      else if (result?.text) toast({ title: "Results", description: result.text });
+      if (Array.isArray(result)) {
+        setTrends(result);
+      } else if (typeof result === "string") {
+        toast({ title: "Results", description: result.slice(0, 200) });
+      } else {
+        toast({ title: "No results returned", variant: "destructive" });
+      }
     } catch (err: any) {
       toast({ title: "Generation failed", description: err.message, variant: "destructive" });
     } finally {
@@ -52,7 +57,7 @@ const TrendFinder = () => {
 
   return (
     <DashboardLayout>
-      <ToolPageWrapper title="Trend Finder" description="Discover trending product opportunities in your niche.">
+      <ToolPageWrapper title="Trend Finder" description="Discover trending topics and opportunities in your niche.">
         <div className="space-y-6">
           <Card>
             <CardContent className="p-6 space-y-4">
@@ -74,26 +79,24 @@ const TrendFinder = () => {
                 </div>
               </div>
               <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate} disabled={loading}>
-                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Finding Trends...</> : <><Sparkles className="w-4 h-4 mr-2" /> Find Trends</>}
+                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Finding Trends...</> : <><TrendingUp className="w-4 h-4 mr-2" /> Find Trends</>}
               </Button>
             </CardContent>
           </Card>
-
           {trends.length > 0 && (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {trends.map((trend, i) => (
                 <Card key={i} className="card-animate">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
-                      <TrendingUp className="w-4 h-4 text-primary" />{trend.trend}
+                      <TrendingUp className="w-4 h-4 text-primary" /> {trend.trend}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <p className="text-sm text-muted-foreground">{trend.description}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Potential:</span>
-                      <span className={`text-sm font-bold ${potentialColor(trend.potential)}`}>{trend.potential}</span>
-                    </div>
+                    <p className={`text-sm font-semibold ${potentialColor(trend.potential)}`}>
+                      Potential: &nbsp;{trend.potential}
+                    </p>
                   </CardContent>
                 </Card>
               ))}
