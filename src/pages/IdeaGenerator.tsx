@@ -40,8 +40,10 @@ const IdeaGenerator = () => {
       const result = data?.result;
       if (Array.isArray(result)) {
         setIdeas(result);
-      } else if (result?.text) {
-        toast({ title: "Generated!", description: result.text });
+      } else if (typeof result === "string") {
+        toast({ title: "Generated!", description: result.slice(0, 200) });
+      } else {
+        toast({ title: "No results returned", variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Generation failed", description: err.message, variant: "destructive" });
@@ -82,7 +84,6 @@ const IdeaGenerator = () => {
               </Button>
             </CardContent>
           </Card>
-
           {ideas.length > 0 && (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ideas.map((idea, i) => (
