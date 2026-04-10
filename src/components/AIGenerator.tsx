@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Zap, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { ListToMarketplace } from "@/components/ListToMarketplace";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   toolSlug: string;
@@ -28,18 +29,25 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields }: Props) => {
       toast({ title: "Please fill in the fields first", variant: "destructive" });
       return;
     }
-
     setIsLoading(true);
     setResult("");
-
     try {
+      // Get the current user session token (JWT) for auth
+      let authToken = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (supabase) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.access_token) {
+          authToken = sessionData.session.access_token;
+        }
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({
             tool: toolSlug,
@@ -60,10 +68,9 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields }: Props) => {
         throw new Error(errorMsg);
       }
 
-      // The edge function now returns plain text (content tokens only)
+      // Stream the plain text response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-
       if (!reader) throw new Error("No response stream");
 
       while (true) {
@@ -117,13 +124,11 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields }: Props) => {
                 )}
               </Button>
             </div>
-
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <div className="whitespace-pre-wrap font-sans text-foreground leading-relaxed">
                 {result}
               </div>
             </div>
-
             <div className="mt-4 pt-4 border-t border-border flex justify-end">
               <ListToMarketplace generatedContent={result} toolTitle={toolTitle} />
             </div>
