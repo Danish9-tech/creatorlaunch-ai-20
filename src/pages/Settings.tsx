@@ -23,14 +23,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PREFS_KEY = "creatorwand_prefs";
 
-type Provider = "grok" | "openai" | "anthropic" | "gemini";
-type ProviderState = {
-  apiKey: string;
-  modelPreference: string;
-  hasKey: boolean;
-  maskedKey: string;
-  isActive: boolean;
-};
 type Platform = "gumroad" | "etsy" | "shopify" | "creative_market" | "payhip" | "teachable";
 type PlatformState = {
   platformName: string;
@@ -42,17 +34,6 @@ type PlatformState = {
   productsSynced: number;
   lastSyncedAt: string | null;
 };
-
-const providerLabels: Record<Provider, string> = {
-  grok: "Grok / xAI", openai: "OpenAI", anthropic: "Anthropic", gemini: "Google Gemini",
-};
-const providerPlaceholders: Record<Provider, string> = {
-  grok: "xai-...", openai: "sk-...", anthropic: "sk-ant-...", gemini: "AIza...",
-};
-const modelPlaceholders: Record<Provider, string> = {
-  grok: "grok-3-mini", openai: "gpt-4o-mini", anthropic: "claude-3-5-haiku-latest", gemini: "gemini-1.5-flash",
-};
-const providers: Provider[] = ["grok", "openai", "anthropic", "gemini"];
 const sellingPlatforms: Platform[] = ["gumroad", "etsy", "shopify", "creative_market", "payhip", "teachable"];
 const platformLabels: Record<Platform, string> = {
   gumroad: "Gumroad", etsy: "Etsy", shopify: "Shopify",
@@ -65,14 +46,6 @@ const platformTokenLabels: Record<Platform, string> = {
 
 function loadPrefs() {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}"); } catch { return {}; }
-}
-function createInitialProviderState(): Record<Provider, ProviderState> {
-  return {
-    grok: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false },
-    openai: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false },
-    anthropic: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false },
-    gemini: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false },
-  };
 }
 function createInitialPlatformState(): Record<Platform, PlatformState> {
   return {
