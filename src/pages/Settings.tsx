@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,20 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
-import { Key, Globe, Trash2, CreditCard, Check, Loader2, Zap } from "lucide-react";
+import { Trash2, CreditCard, Check, Globe, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 
 const PREFS_KEY = "creatorwand_prefs";
 
-type Provider = "grok" | "openai" | "anthropic" | "gemini";
-type ProviderState = {
-  apiKey: string;
-  modelPreference: string;
-  hasKey: boolean;
-  maskedKey: string;
-  isActive: boolean;
-};
 type Platform = "gumroad" | "etsy" | "shopify" | "creative_market" | "payhip" | "teachable";
 type PlatformState = {
   platformName: string;
@@ -43,37 +35,16 @@ type PlatformState = {
   lastSyncedAt: string | null;
 };
 
-const providerLabels: Record<Provider, string> = {
-  grok: "Grok / xAI", openai: "OpenAI", anthropic: "Anthropic", gemini: "Google Gemini",
-};
-const providerPlaceholders: Record<Provider, string> = {
-  grok: "xai-...", openai: "sk-...", anthropic: "sk-ant-...", gemini: "AIza...",
-};
-const modelPlaceholders: Record<Provider, string> = {
-  grok: "grok-3-mini", openai: "gpt-4o-mini", anthropic: "claude-3-5-haiku-latest", gemini: "gemini-1.5-flash",
-};
-const providers: Provider[] = ["grok", "openai", "anthropic", "gemini"];
 const sellingPlatforms: Platform[] = ["gumroad", "etsy", "shopify", "creative_market", "payhip", "teachable"];
 const platformLabels: Record<Platform, string> = {
   gumroad: "Gumroad", etsy: "Etsy", shopify: "Shopify",
   creative_market: "Creative Market", payhip: "Payhip", teachable: "Teachable",
 };
-const platformTokenLabels: Record<Platform, string> = {
-  gumroad: "Access Token", etsy: "API Token", shopify: "Admin API Token",
-  creative_market: "Access Token", payhip: "API Token", teachable: "API Token",
-};
 
 function loadPrefs() {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}"); } catch { return {}; }
 }
-function createInitialProviderState(): Record<Provider, ProviderState> {
-  return {
-    grok: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false },
-    openai: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false },
-    anthropic: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false },
-    gemini: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false },
-  };
-}
+
 function createInitialPlatformState(): Record<Platform, PlatformState> {
   return {
     gumroad: { platformName: "Gumroad", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
@@ -84,10 +55,11 @@ function createInitialPlatformState(): Record<Platform, PlatformState> {
     teachable: { platformName: "Teachable", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
   };
 }
+
 const plans = [
-  { name: "Free", price: "$0/mo", current: true },
-  { name: "Pro", price: "$19/mo", current: false },
-  { name: "Business", price: "$49/mo", current: false },
+  { name: "Free", price: "$0/mo" },
+  { name: "Pro", price: "$19/mo" },
+  { name: "Business", price: "$49/mo" },
 ];
 
 const Settings = () => {
@@ -95,23 +67,8 @@ const Settings = () => {
   const [prefs, setPrefs] = useState(() => loadPrefs());
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains("dark"));
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-
-  // User Plan & Credit State
-  const [userPlan, setUserPlan] = useState<string>("free");
-  const [userCredits, setUserCredits] = useState<number>(0);
-
-  // Groq API Key state
-  const [groqKey, setGroqKey] = useState("");
-  const [savedGroqKey, setSavedGroqKey] = useState("");
-  const [savingGroqKey, setSavingGroqKey] = useState(false);
-  const [clearingGroqKey, setClearingGroqKey] = useState(false);
-
-  // Provider / Platform state
-  const [providerState, setProviderState] = useState<Record<Provider, ProviderState>>(() => createInitialProviderState());
-  const [loadingKeys, setLoadingKeys] = useState(true);
-  const [savingProvider, setSavingProvider] = useState<Provider | null>(null);
-  const [deletingProvider, setDeletingProvider] = useState<Provider | null>(null);
-  const [activatingProvider, setActivatingProvider] = useState<Provider | null>(null);
+  const [userPlan, setUserPlan] = useState("free");
+  const [userCredits, setUserCredits] = useState(0);
   const [platformState, setPlatformState] = useState<Record<Platform, PlatformState>>(() => createInitialPlatformState());
   const [loadingPlatforms, setLoadingPlatforms] = useState(true);
   const [savingPlatform, setSavingPlatform] = useState<Platform | null>(null);
@@ -130,87 +87,15 @@ const Settings = () => {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
-  // Load user's subscription plan and credits
   useEffect(() => {
     const loadUserPlan = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("plan, plan_type, credits")
-        .single();
+      const { data } = await supabase.from("profiles").select("plan, plan_type, credits").single();
       if (data) {
-        const planName = (data.plan || data.plan_type || "free").toLowerCase();
-        setUserPlan(planName);
+        setUserPlan((data.plan || data.plan_type || "free").toLowerCase());
         setUserCredits(data.credits || 0);
       }
     };
     loadUserPlan();
-  }, []);
-
-  // Load saved Groq key from profile
-  useEffect(() => {
-    const loadGroqKey = async () => {
-      const { data } = await supabase.from("profiles").select("user_api_key").single();
-      if (data?.user_api_key) {
-        const masked = data.user_api_key.slice(0, 8) + "••••••••••••••••" + data.user_api_key.slice(-4);
-        setSavedGroqKey(masked);
-      }
-    };
-    loadGroqKey();
-  }, []);
-
-  const handleSaveGroqKey = async () => {
-    if (!groqKey.trim().startsWith("gsk_")) {
-      toast({ title: "Invalid key", description: "Groq API keys start with gsk_", variant: "destructive" });
-      return;
-    }
-    setSavingGroqKey(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from("profiles").update({ user_api_key: groqKey.trim() }).eq("id", user!.id);
-      if (error) throw error;
-      const masked = groqKey.slice(0, 8) + "••••••••••••••••" + groqKey.slice(-4);
-      setSavedGroqKey(masked);
-      setGroqKey("");
-      toast({ title: "Groq API key saved!", description: "Your key will now be used for AI generation." });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSavingGroqKey(false);
-    }
-  };
-
-  const handleClearGroqKey = async () => {
-    setClearingGroqKey(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from("profiles").update({ user_api_key: null }).eq("id", user!.id);
-      if (error) throw error;
-      setSavedGroqKey("");
-      setGroqKey("");
-      toast({ title: "Groq key removed", description: "Platform key will be used instead." });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setClearingGroqKey(false);
-    }
-  };
-
-  useEffect(() => {
-    const loadApiKeys = async () => {
-      setLoadingKeys(true);
-      try {
-        const { data, error } = await supabase.functions.invoke("manage-api-keys", { body: { action: "list" } });
-        if (error) throw error;
-        const next = createInitialProviderState();
-        for (const entry of data?.keys || []) {
-          const provider = entry.provider as Provider;
-          if (!next[provider]) continue;
-          next[provider] = { ...next[provider], hasKey: !!entry.hasKey, maskedKey: entry.maskedKey || "", isActive: !!entry.isActive, modelPreference: entry.modelPreference || "" };
-        }
-        setProviderState(next);
-      } catch { /* Fail silently */ } finally { setLoadingKeys(false); }
-    };
-    loadApiKeys();
   }, []);
 
   useEffect(() => {
@@ -226,7 +111,7 @@ const Settings = () => {
           next[platform] = { ...next[platform], platformName: entry.platformName || next[platform].platformName, hasAccessToken: !!entry.hasAccessToken, maskedToken: entry.maskedToken || "", storeUrl: entry.settings?.store_url || "", isActive: entry.isActive ?? true, productsSynced: entry.productsSynced ?? 0, lastSyncedAt: entry.lastSyncedAt || null };
         }
         setPlatformState(next);
-      } catch { /* Fail silently */ } finally { setLoadingPlatforms(false); }
+      } catch { /* silent */ } finally { setLoadingPlatforms(false); }
     };
     loadPlatformIntegrations();
   }, []);
@@ -236,59 +121,6 @@ const Settings = () => {
     toast({ title: `Dark mode ${v ? "enabled" : "disabled"}` });
   };
 
-  const updateProviderField = (provider: Provider, field: keyof ProviderState, value: string | boolean) => {
-    setProviderState((prev) => ({ ...prev, [provider]: { ...prev[provider], [field]: value } }));
-  };
-
-  const handleSaveProvider = async (provider: Provider) => {
-    const state = providerState[provider];
-    const apiKey = state.apiKey.trim();
-    if (!apiKey) { toast({ title: "Missing API key", variant: "destructive" }); return; }
-    setSavingProvider(provider);
-    try {
-      const { data, error } = await supabase.functions.invoke("manage-api-keys", { body: { action: "save", provider, apiKey, modelPreference: state.modelPreference.trim(), isActive: true } });
-      if (error) throw error;
-      setProviderState((prev) => {
-        const next = { ...prev };
-        for (const p of providers) next[p] = { ...next[p], isActive: p === provider };
-        next[provider] = { ...next[provider], apiKey: "", hasKey: true, maskedKey: data?.key?.maskedKey || next[provider].maskedKey, modelPreference: state.modelPreference.trim(), isActive: true };
-        return next;
-      });
-      toast({ title: `${providerLabels[provider]} key saved` });
-    } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    } finally { setSavingProvider(null); }
-  };
-
-  const handleDeleteProvider = async (provider: Provider) => {
-    setDeletingProvider(provider);
-    try {
-      const { error } = await supabase.functions.invoke("manage-api-keys", { body: { action: "delete", provider } });
-      if (error) throw error;
-      setProviderState((prev) => ({ ...prev, [provider]: { apiKey: "", modelPreference: "", hasKey: false, maskedKey: "", isActive: false } }));
-      toast({ title: `${providerLabels[provider]} key removed` });
-    } catch (err: any) {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
-    } finally { setDeletingProvider(null); }
-  };
-
-  const handleActivateProvider = async (provider: Provider) => {
-    if (!providerState[provider].hasKey) { toast({ title: "No saved key", variant: "destructive" }); return; }
-    setActivatingProvider(provider);
-    try {
-      const { error } = await supabase.functions.invoke("manage-api-keys", { body: { action: "set-active", provider } });
-      if (error) throw error;
-      setProviderState((prev) => {
-        const next = { ...prev };
-        for (const p of providers) next[p] = { ...next[p], isActive: p === provider };
-        return next;
-      });
-      toast({ title: `${providerLabels[provider]} is now active` });
-    } catch (err: any) {
-      toast({ title: "Activation failed", description: err.message, variant: "destructive" });
-    } finally { setActivatingProvider(null); }
-  };
-
   const handleDeleteAccount = () => {
     localStorage.clear();
     toast({ title: "Account deleted" });
@@ -296,7 +128,7 @@ const Settings = () => {
   };
 
   const updatePlatformField = (platform: Platform, field: keyof PlatformState, value: string | boolean | number | null) => {
-    setPlatformState((prev) => ({ ...prev, [platform]: { ...prev[platform], [field]: value } }));
+    setPlatformState(prev => ({ ...prev, [platform]: { ...prev[platform], [field]: value } }));
   };
 
   const handleSavePlatform = async (platform: Platform) => {
@@ -305,7 +137,7 @@ const Settings = () => {
     try {
       const { data, error } = await supabase.functions.invoke("manage-platform-integrations", { body: { action: "save", platform, platformName: state.platformName.trim() || platformLabels[platform], accessToken: state.accessToken.trim(), storeUrl: state.storeUrl.trim(), isActive: state.isActive } });
       if (error) throw error;
-      setPlatformState((prev) => ({ ...prev, [platform]: { ...prev[platform], accessToken: "", maskedToken: data?.integration?.maskedToken || prev[platform].maskedToken, hasAccessToken: !!data?.integration?.hasAccessToken, storeUrl: data?.integration?.settings?.store_url || prev[platform].storeUrl, isActive: data?.integration?.isActive ?? prev[platform].isActive } }));
+      setPlatformState(prev => ({ ...prev, [platform]: { ...prev[platform], accessToken: "", maskedToken: data?.integration?.maskedToken || prev[platform].maskedToken, hasAccessToken: !!data?.integration?.hasAccessToken, storeUrl: data?.integration?.settings?.store_url || prev[platform].storeUrl, isActive: data?.integration?.isActive ?? prev[platform].isActive } }));
       toast({ title: `${platformLabels[platform]} connected` });
     } catch (err: any) {
       toast({ title: "Connection failed", description: err.message, variant: "destructive" });
@@ -317,7 +149,7 @@ const Settings = () => {
     try {
       const { error } = await supabase.functions.invoke("manage-platform-integrations", { body: { action: "delete", platform } });
       if (error) throw error;
-      setPlatformState((prev) => ({ ...prev, [platform]: createInitialPlatformState()[platform] }));
+      setPlatformState(prev => ({ ...prev, [platform]: createInitialPlatformState()[platform] }));
       toast({ title: `${platformLabels[platform]} disconnected` });
     } catch (err: any) {
       toast({ title: "Disconnect failed", description: err.message, variant: "destructive" });
@@ -365,89 +197,6 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Your Groq API Key Section */}
-        <Card className="border-primary/30">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" /> Your Groq API Key
-            </CardTitle>
-            <CardDescription>
-              Add your own free Groq API key to use unlimited AI generation.
-              Get one at{" "}
-              <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-primary underline">
-                console.groq.com
-              </a>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {savedGroqKey && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
-                <Check className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-green-700 dark:text-green-400 font-mono">{savedGroqKey}</span>
-                <Badge className="ml-auto bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-400">Active</Badge>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                value={groqKey}
-                onChange={(e) => setGroqKey(e.target.value)}
-                className="flex-1 font-mono"
-              />
-              <Button onClick={handleSaveGroqKey} disabled={savingGroqKey || !groqKey.trim()}>
-                {savingGroqKey ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
-              </Button>
-              {savedGroqKey && (
-                <Button variant="outline" onClick={handleClearGroqKey} disabled={clearingGroqKey}>
-                  {clearingGroqKey ? <Loader2 className="w-4 h-4 animate-spin" /> : "Remove"}
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Other API Keys */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><Key className="w-4 h-4" /> Other AI Providers</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {loadingKeys ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading keys...
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {providers.map((provider) => {
-                  const state = providerState[provider];
-                  const busy = savingProvider === provider || deletingProvider === provider || activatingProvider === provider;
-                  return (
-                    <div key={provider} className="rounded-lg border p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{providerLabels[provider]}</p>
-                          {state.isActive && <Badge>Active</Badge>}
-                        </div>
-                        {state.hasKey && <p className="text-xs text-muted-foreground">{state.maskedKey}</p>}
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-3">
-                        <Input type="password" placeholder={providerPlaceholders[provider]} value={state.apiKey} onChange={(e) => updateProviderField(provider, "apiKey", e.target.value)} />
-                        <Input placeholder={modelPlaceholders[provider]} value={state.modelPreference} onChange={(e) => updateProviderField(provider, "modelPreference", e.target.value)} />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleSaveProvider(provider)} disabled={busy}>Save</Button>
-                        <Button size="sm" variant="outline" onClick={() => handleActivateProvider(provider)} disabled={busy || !state.hasKey}>Activate</Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDeleteProvider(provider)} disabled={busy || !state.hasKey}>Remove</Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Platform Connections */}
         <Card>
           <CardHeader>
@@ -460,7 +209,7 @@ const Settings = () => {
               </div>
             ) : (
               <div className="grid gap-4">
-                {sellingPlatforms.map((platform) => {
+                {sellingPlatforms.map(platform => {
                   const state = platformState[platform];
                   const busy = savingPlatform === platform || deletingPlatform === platform;
                   return (
@@ -469,7 +218,7 @@ const Settings = () => {
                         <p className="font-medium">{platformLabels[platform]}</p>
                         {state.hasAccessToken ? <Badge>Connected</Badge> : <Badge variant="secondary">Disconnected</Badge>}
                       </div>
-                      <Input type="password" value={state.accessToken} onChange={(e) => updatePlatformField(platform, "accessToken", e.target.value)} placeholder="Access Token" />
+                      <Input type="password" value={state.accessToken} onChange={e => updatePlatformField(platform, "accessToken", e.target.value)} placeholder="Access Token" />
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => handleSavePlatform(platform)} disabled={busy}>Connect</Button>
                         <Button size="sm" variant="outline" onClick={() => handleDeletePlatform(platform)} disabled={busy || !state.hasAccessToken}>Disconnect</Button>
@@ -490,13 +239,9 @@ const Settings = () => {
           <CardContent>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="font-semibold">
-                  {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plan
-                </p>
+                <p className="font-semibold">{userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plan</p>
                 <p className="text-xs text-muted-foreground">
-                  {userPlan === "free" 
-                    ? "3 AI generations per day" 
-                    : `${userCredits} credits remaining`}
+                  {userPlan === "free" ? "3 AI generations per day" : `${userCredits} credits remaining`}
                 </p>
               </div>
               <Badge className="gradient-primary text-primary-foreground">Current</Badge>

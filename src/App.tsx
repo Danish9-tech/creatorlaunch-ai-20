@@ -37,6 +37,7 @@ const Settings            = lazy(() => import("./pages/Settings"));
 const ToolPage            = lazy(() => import("./pages/ToolPage"));
 const AdminDashboard      = lazy(() => import("./pages/AdminDashboard"));
 const MarketplaceConnect  = lazy(() => import("./pages/MarketplaceConnect"));
+const AIProviders         = lazy(() => import("./pages/AIProviders"));
 // Legal pages
 const PrivacyPolicy       = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService      = lazy(() => import("./pages/TermsOfService"));
@@ -101,6 +102,7 @@ const App = () => (
               <Route path="/launch-checklist" element={<LaunchChecklist />} />
               <Route path="/export-tools" element={<ExportTools />} />
               <Route path="/marketplace" element={<MarketplaceConnect />} />
+              <Route path="/ai-providers" element={<AIProviders />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={<AdminDashboard />} />

@@ -44,6 +44,7 @@ const toolItems = [
 const utilNav = [
   { title: "Launch Checklist", url: "/launch-checklist", icon: CheckSquare },
   { title: "Marketplace", url: "/marketplace", icon: Package },
+  { title: "AI Providers", url: "/ai-providers", icon: Wand2 },
 ];
 
 const bottomItems = [
