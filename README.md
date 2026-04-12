@@ -1,287 +1,204 @@
-# CreatorWand AI
+# 🪄 CreatorWand
 
-CreatorLaunch AI (also called CreatorWand AI in some code) is a SaaS platform for digital product creators and sellers. It helps you research niches, generate product ideas, write listings and marketing copy, optimize SEO and pricing, and (planned) push listings directly to marketplaces like Gumroad.
-Core stack: **Vite + React + TypeScript + Tailwind CSS + Supabase**, with frontend on GitHub, backend on Supabase, deployment on Vercel. [perplexity]
+CreatorWand AI is an AI‑powered SaaS platform for digital product creators and sellers. It helps you:
 
+* **Discover** profitable niches
+* **Generate** and validate product ideas
+* **Create** listings and marketing content
+* **Optimize** SEO and pricing
+* **(Planned)** Connect to marketplaces like Gumroad for analytics and publishing
 
-## High-Level Architecture
+The product is built as a modern full‑stack web app with ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=flat&logo=vite&logoColor=white) + ![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB) + ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white) + ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=flat&logo=tailwind-css&logoColor=white) + ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white), deployed on ![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=flat&logo=vercel&logoColor=white).
 
-- **Frontend (GitHub)**
-  - Vite + React 18 + TypeScript  
-  - Tailwind CSS + shadcn-style UI components  
-  - React Router app with authenticated dashboard layout  
-  - Supabase client from `@/integrations/supabase/client` (always initialized)  
+---
 
-- **Backend (Supabase)**
-  - PostgreSQL with RLS  
-  - Auth (email/password)  
-  - Tables for profiles, plans, subscriptions, roles, admin, products, AI usage, user API keys  
-  - `is_admin(uuid)` RPC for safe admin checks  
-  - Edge Functions (notably `ai-generate`) for AI tools  
+# 📑 Table of Contents
+* [Tech Stack](#tech-stack)
+* [Architecture Overview](#architecture-overview)
+* [Core Features](#core-features)
+* [AI Tools Catalog](#ai-tools-catalog)
+* [Plans, Credits & Access Control](#plans-credits--access-control)
+* [Database Schema](#database-schema-high-level)
+* [Supabase Edge Functions](#supabase-edge-functions)
+* [Marketplace & API Keys](#marketplace--api-keys)
+* [Error Monitoring & Analytics](#error-monitoring--analytics)
+* [Local Development](#local-development)
+* [Deployment](#deployment-vercel)
+* [Roadmap](#roadmap)
+* [License](#license)
 
-- **Deployment (Vercel)**
-  - GitHub → Vercel integration  
-  - ENV vars configured for Supabase and AI keys  
-  - Production project: `creatorlaunch-ai-2026`  
+---
 
-- **Observability (optional but supported)**
-  - Sentry for error monitoring  
-  - PostHog for analytics  
+# 📊 GitHub Stats
 
+### <img src="https://github-readme-streak-stats.herokuapp.com/?user=Danish9-tech&theme=dark" alt="Current Streak" />
 
-## Main Features
+---
 
-- Authentication (Supabase Auth) with protected dashboard.
-- Plans & credits system (Free, Starter, Pro, Agency, Business, Admin variants).
-- Central plan gate (`usePlanGate` + `PlanGate`) to protect all tools from one place. 
-- Admin Dashboard (`/admin` or `/admin-dashboard`) for full control over users, roles, plans, credits, and tool usage. 
-- AI tools via Supabase Edge Function `ai-generate` using Groq/Grok or user’s own API key. 
-- Marketplace module (Gumroad integration: connection, listings, analytics).
-- API Keys module where users can attach their own AI keys. 
-- Legal and marketing pages (Landing, Privacy Policy, Terms of Service, Contact, etc.).
+# 💻 Tech Stack
 
-## AI Tools (All Micro + Main Tools)
+### 🎨 Frontend
+* **Vite + React 18 + TypeScript**
+* **Tailwind CSS + shadcn-style components**
+* **React Router** for routing
+* **Supabase JS client** from `@/integrations/supabase/client` (always initialized)
 
-All AI tools share the same backend pattern:
+### ⚙️ Backend (Supabase)
+* **PostgreSQL** with Row Level Security (RLS)
+* **Supabase Auth** (email/password)
+* **RPC function** `is_admin(uuid)` with `SECURITY DEFINER` for admin checks
+* **Edge Function** `ai-generate` for AI tools
+* **Tables:** profiles, plans, subscriptions, roles, admin, products, AI usage, user API keys
 
-1. Frontend page calls `supabase.functions.invoke('ai-generate', { body: { toolId, payload } })`. 
-2. `ai-generate` edge function:
-   - Checks if user has a personal API key in `user_api_keys` / `api_key_encrypted`.  
-   - If not, falls back to platform `GROK_API_KEY` / Groq key.  
-   - Calls LLM (e.g., Groq Llama 3.3 70B) with a tool-specific prompt.  
-   - Returns structured JSON `{ result: ... }`.  
-3. Frontend renders cards/tables using `data.result`.
+### 🚀 Deployment (Vercel)
+* **GitHub → Vercel CI/CD**
+* **Production project:** `creatorlaunch-ai-2026`
+* **Environment variables** via Vercel project settings
 
-### Core Tool Set (7 Primary Tools)
-These are fully wired and verified:
+### 📉 Observability (optional)
+* ![Sentry](https://img.shields.io/badge/sentry-%23362D59.svg?style=flat&logo=sentry&logoColor=white) **Sentry** for error monitoring (`VITE_SENTRY_DSN`)
+* ![PostHog](https://img.shields.io/badge/PostHog-F6511D?logo=posthog&logoColor=white) **PostHog** for product analytics (`VITE_POSTHOG_KEY`)
 
-1. **Idea Generator**  
-   - Input: niche, platform, audience, price range, etc.  
-   - Output: cards with product name, description, pricing suggestion, demand level, competition rating.
-   - Usage: starting point to brainstorm digital products.
+---
 
-2. **Trend Finder**  
-   - Input: niche, timeframe, marketplace.  
-   - Output: trend analysis, rising/declining topics, opportunities.  
-   - Uses same `ai-generate` pipeline with a different `toolId`.
-   - 
-3. **Listings Generator**  
-   - Input: product concept, target platform (Gumroad, Etsy, etc.), keywords.  
-   - Output: title, short description, long description, bullet points, tags/keywords.
+# 🏛️ Architecture Overview
+The system is split across three platforms:
 
-4. **Marketing Generator**  
-   - Input: product info, audience, tone.  
-   - Output: email copy, social posts, ad copy variants.
-   - 
-5. **SEO Tools**  
-   - Input: niche/product, base URL, focus keyword.  
-   - Output: keyword clusters, meta title/description suggestions, content outline, SEO tips.
+### 🌐 Frontend (GitHub)
+* **Repository:** [https://github.com/Danish9-tech/creatorlaunch-ai-20](https://github.com/Danish9-tech/creatorlaunch-ai-20)
+* Vite React app (TS) using Tailwind, shadcn components, Dashboard layout
+* All AI tools are rendered via dedicated pages or a generic tools page
+* Supabase client handles auth, profile fetching, and calling edge functions
 
-6. **Competitor Analyzer**  
-   - Input: competitor URLs or product names/platform.  
-   - Output: competitor overview, pricing comparison, pros/cons, positioning suggestions.  
-   - UI enhanced with `TrendingUp` / `TrendingDown` icons.
-   - 
-7. **Pricing Optimizer**  
-   - Input: product type, audience, cost, competition info.  
-   - Output: recommended price range, different pricing strategies, justification.
-   - 
-### Additional / Planned Tools
+### ⚡ Backend (Supabase)
+* **Auth:** email/password, user metadata in profiles table
+* **RLS‑protected tables** for plans, subscriptions, roles, admin, products, API keys, usage logs
+* **RPC `is_admin(uuid)`** used throughout for safe admin checks that bypass RLS where needed
+* **Edge function `ai-generate`** handles all AI generation logic
 
-From the Lovable audit and schema, the platform is designed for “30+ tools”, with many micro-tools powered by the same `GenericToolPage` + `ai-generate` logic.
+### 📦 Deploy (Vercel)
+* Main branch deployments
+* Environment variables for Supabase + AI keys + observability
+* Edge function secrets (e.g. `GROK_API_KEY`) configured in Supabase project settings
 
-Examples (from schema & UX):
+---
 
-- Product validation / score tools  
-- Niche score tools  
-- Headline/title variations  
-- Upsell/downsell suggestions  
-- Content outline generators  
-- Review mining summarizers  
-- Marketplace-specific optimizer tools (e.g., Gumroad vs Etsy variants)  
+# 🚀 Core Features
+* **Authentication & Dashboard:** Supabase Auth (email/password). Auth‑protected dashboard with stats, plan information, and quick access to tools.
+* **AI Tools Platform (30+ tools designed):** 7 core tools fully wired (Idea, Trends, Listings, Marketing, SEO, Competitors, Pricing). Additional micro‑tools built on a generic tools engine (`GenericToolPage` + `ai-generate`).
+* **Plans & Credits:** Plans table seeded with Free, Starter, Pro, Agency, plus Business/Admin usage in code. `usePlanGate` hook + `PlanGate` component centralize access control for all tools.
+* **Admin Dashboard:** Admin route (`/admin` or `/admin-dashboard`) accessible only to admin users. Manage users, roles, plans, and credits.
+* **Marketplace (Gumroad):** Central Marketplace page in sidebar. Designed to connect via token/application ID, sync listings, and show analytics.
+* **User API Keys:** Users can attach their own AI API keys (separate from platform default key). Keys stored in `user_api_keys` / `api_key_encrypted` with RLS so each user only sees their own.
+* **Legal & Marketing Pages:** Landing page with footer links to Privacy Policy, Terms of Service, Contact. Auth‑aware Privacy/Terms pages that render inside dashboard if logged in.
 
-All of these are plugged in via:
+---
 
-- Database `tools` / `tool_categories` tables with metadata.
-- `GenericToolPage.tsx` that reads `toolId` from route and renders a generic UI.
-- `PlanGate` ensures each tool is only available to the right plan.
+# 🤖 AI Tools Catalog
+All tools share the same backend pipeline via Supabase Edge Function ai-generate.
 
+# 🔄 How Tool Execution Works
+Frontend collects user input for a specific tool (e.g., Idea Generator). Makes a call:
 
-## Pages & Navigation
+TypeScript
+const { data, error } = await supabase.functions.invoke('ai-generate', {
+ body: { toolId: 'idea-generator', payload: formValues },
+});
+ai-generate Execution Flow:
 
-### Main Routes (User-Facing)
+Validate: Plan/credits check and usage logging.
 
-- `/` – Marketing/landing page  
-- `/login`, `/signup` – Auth flow  
-- `/dashboard` – Overview (stats, plan, quick links)  
-- `/tools` or multiple `/tools/...` routes – AI tools (7 core + more micro tools)  
-- `/products` – Saved products from ProductCreator wizard (status = draft, etc.)..ai/search/0d6a3fcb-5c65-4cdd-ab81-698b95a303c1)
-- `/api-keys` – API keys management (user-provided AI keys).
-- `/settings` – Profile, plan details, maybe billing stubs.
+Auth: Chooses API key (User key from user_api_keys if available, else platform GROK_API_KEY).
 
-### Admin Routes
-- `/admin` or `/admin-dashboard` – Admin overview  
-  - Summary stats, total users, plan breakdown, credits usage  
-- Users management page  
-  - Upgrade/downgrade plans (Free → Business, etc.)  
-  - Adjust credits, set/unset admin for users  
-- Tools usage / logs pages (planned)  
+LLM Call: Calls Groq Llama 3.3 70B with a tool‑specific prompt.
 
-Sidebar additions:
+Response: Returns { result: ... } JSON for the frontend.
 
-- `Admin` link in `AppSidebar` bottom items with Shield icon.
-- `API Keys` link below `Marketplace`.
+Render: Frontend displays cards/tables using data.result.
 
-### Legal / Support Pages
+# 🛠️ Core Tools (7 Fully Wired)
+Idea Generator: Input: niche, platform, audience, monetization. Output: product name, description, price, demand level.
 
-- `/privacy-policy`  
-- `/terms-of-service`  
-- `/contact`  
+Trend Finder: Input: niche, market, timeframe. Output: trending topics, demand shifts, market gaps.
 
-These pages support both logged-in layout (inside `DashboardLayout`) and public layout, with auth-aware logic.
+Listings Generator: Input: concept, keywords, tone. Output: titles, descriptions, bullet features, SEO tags.
 
-## Database Schema (High Level)
+Marketing Generator: Input: product info, audience. Output: email campaigns, social posts, ad copy.
 
-Exact schema was generated from Lovable audit and then expanded.
-Key tables:
+SEO Tools: Input: niche, main keyword. Output: keyword clusters, on‑page suggestions, content outline.
 
-- `profiles`  
-  - `id` (uuid, matches `auth.users.id`)  
-  - `email`  
-  - `plan` (e.g., free, starter, pro, agency, business)  
-  - `credits` (int, can be large for unlimited)  
-  - Other profile fields  
-- `plans`  
-  - `slug` (free/starter/pro/agency etc.)  
-  - `name`, `price`, `credits`, `unlimited`, `features` (JSON array), `sort_order`  
-  - Seeded with defaults in SQL.
-- `user_subscriptions`  
-  - `user_id`  
-  - `plan_slug`  
-  - `credits_remaining` (can be `-1` for unlimited)  
-- `user_roles`  
-  - `user_id`  
-  - `role` (e.g., admin)
-- `admin_users`  
-  - `user_id` (explicit admin list)  
-- `user_api_keys` / `api_key_encrypted`  
-  - `user_id`  
-  - `provider` (e.g., groq/grok/openai)  
-  - `key` / `encrypted_key`  
-  - RLS ensures users only see their own keys.
-- `products`  
-  - `id`, `user_id`, `title`, `description`, `niche`, `product_type`, `price`, `status` (draft/published)  
-  - Inserted when the product wizard completes.
-- `ai_usage_logs` / `credits_usage` (designed in Lovable audit)  
-  - Tracks per-tool and per-user usage for credits.
+Competitor Analyzer: Input: competitor URLs. Output: summaries, feature/price comparison, visual indicators.
 
-RLS:
+Pricing Optimizer: Input: cost, perceived value, competition. Output: recommended range, tiered strategies.
 
-- Each table has policies like “user can read/write their own rows”, plus admin override via `is_admin()` function.
-- `is_admin(uuid)` function is `SECURITY DEFINER` so that admin checks bypass RLS safely.
+# 🔬 Additional / Micro Tools
+Validation: product score, niche score, risk analysis
 
+Copy: headline variations, hooks, CTAs
 
-## Plan & Credits Logic
+Content: outline generators, script writers, blog starters
 
-The plan system is layered to avoid inconsistent UI:
+Optimization: upsell/downsell ideas, bundle suggestions
 
-Priority order for determining effective plan:
+Marketplace: platform‑specific listing generators
 
-1. `admin_users` / `user_roles` (admin → full/unlimited access).
-2. `user_subscriptions` (plan_slug + credits_remaining).
-3. `profiles.plan` and `profiles.credits`.
+# 💳 Plans, Credits & Access Control
+Multi‑layer plan system ensures UI never disagrees with database state.
 
-`usePlanGate` hook:
+# 📋 Plans Table (seeded)
+Includes: free, starter, pro, agency.
 
-- Reads Supabase profile + subscription + role.
-- Resolves final “effective plan” and credit availability.  
-- `PlanGate` component wraps tool pages and decides:  
-  - Allow access (business/pro/admin)  
-  - Show upgrade modal (free/starter, not enough credits)  
-  - Show error if something misconfigured  
+Fields: slug, name, price, credits, unlimited (bool), features (JSON), sort_order.
 
-All tools pass through this gate via `GenericToolPage`.
+# ⚖️ How Effective Plan is Determined
+Admin: admin_users / user_roles with role='admin' (Unlimited access).
 
+Subscription: user_subscriptions row with plan_slug + credits_remaining.
 
-## Edge Function: `ai-generate`
+Profile Fallback: profiles.plan and profiles.credits.
 
-Location: `supabase/functions/ai-generate/index.ts`.
+# 🗄️ Database Schema (Simplified)
 
-Responsibilities:
+| Table | Purpose | Key Fields |
+| :--- | :--- | :--- |
+| `profiles` | User Data | id, email, plan, credits |
+| `user_api_keys` | Encrypted Keys | provider (Grok/OpenAI), encrypted_key |
+| `products` | Content Hub | user_id, title, niche, status (Draft/Pub) |
+| `ai_usage_logs` | Analytics | timestamp, tool_id, credits_used |
 
-- Parse incoming request: `{ toolId, payload, userId }`.  
-- Look up user’s plan & credits; optionally decrement credits. 
-- Resolve which API key to use:
-  - If user has personal key in `user_api_keys`, use that.
-  - Else use platform-level `GROK_API_KEY` (env).
-- Call AI provider (e.g., Groq Llama 3.3 70B) with tool-specific prompt template.
-- Return `Content-Type: application/json` with `{ result: ... }`.
-- 
-Important fix:
+# ⚡Supabase Edge Functions
+ai-generate: The central engine.
 
-- Original function streamed plain text; frontend expected JSON via `supabase.functions.invoke`, which broke all tools.
-- Rewritten to return JSON so `data.result` is correctly populated in React pages.
-- 
-Env:
+Responsibilities: Validate user session/plan, check/update credits, determine provider key (User vs Platform), call Groq Llama 3.3 70B, and return JSON.
 
-- `GROK_API_KEY` configured both in Vercel env and Supabase Edge Function secrets via `Deno.env.get('GROK_API_KEY')`.
+# 🏪 Marketplace & API Keys
+Marketplace (Gumroad): Central Sidebar page. Consolidated settings with connection status, listings tab, and analytics.
 
-## Environment Variables
+User API Keys: Dedicated /api-keys page. RLS policies ensure users only manage their own keys. Fallback to platform key if no user key exists.
 
-In development, use `.env` / `.env.local`:
-
-```bash
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-GROK_API_KEY=your_default_model_key
-VITE_SENTRY_DSN=your_sentry_dsn        # optional
-VITE_POSTHOG_KEY=your_posthog_key      # optional
-```
-
-Important notes:
-
-- `VITE_SUPABASE_ANON_KEY` naming was corrected (previously misnamed).
-- `GROK_API_KEY` must be set in both Vercel and Supabase function secrets.
-
-## Local Development
-
-```bash
+# 💻 Local Development
+Bash
 git clone https://github.com/Danish9-tech/creatorlaunch-ai-20.git
 cd creatorlaunch-ai-20
-pnpm install   # or npm install / yarn
-pnpm dev       # or npm run dev
-```
+pnpm install
+pnpm dev
+Note: Create .env with VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and GROK_API_KEY.
 
-Repo + deployment details from earlier sessions.
+# 🚀 Deployment (Vercel)
+CI/CD: GitHub ➔ Vercel.
 
-## Production Deployment (Vercel)
+Project: creatorlaunch-ai-2026.
 
-1. Connect GitHub repo to Vercel.
-2. Add env vars in the Vercel project: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GROK_API_KEY`, plus optional observability keys. 
-3. Ensure Supabase Edge Functions are deployed (`ai-generate`).c5b3764e0233)
-4. Push to `main` → Vercel auto-build → production deployment.
+Steps: Set Env vars ➔ Deploy Edge Functions ➔ Automated Build.
 
-## Error Monitoring & Analytics
+# 🛣️ Roadmap
+[ ] Finalize Marketplace integration with real Gumroad analytics.
 
-- **Sentry**: Project supports Sentry integration via `VITE_SENTRY_DSN` and `@sentry/react` + `@sentry/tracing` in the Vite app.
-- **PostHog**: Frontend can initialize `posthog-js` with project key for product analytics.
+[ ] Complete API Keys page UI.
 
-## Status / What’s Working
+[ ] Expand Admin Dashboard with user and tool usage analytics.
 
-From the last full audit and fixes:
+[ ] Add payments and subscription billing system.
 
-- Auth, dashboard, navigation: working.  
-- Plan & admin detection, `is_admin()` + RLS: fixed and working.  
-- Business/admin plans now correctly recognized on frontend.  
-- Admin Dashboard accessible with your admin email.  
-- `ai-generate` Edge Function: fully wired and returning JSON.  
-- All 7 main tools working with Groq key and user’s own key.  
-- User API keys table + RLS: configured; API Keys page pending/partially implemented.  
-- Marketplace consolidation and Gumroad live analytics/listings: in progress.  
-
-
-If you want, next step I can:
-
-- Add an explicit “Tools Overview” section in the README that lists every route/slug for each tool exactly as it appears in your `tools` table and routes (we’ll need you to paste your `tools` table content or `src/pages/tools` tree for that).  
-
-What I’m missing now is the exact file/route names for all 30+ micro tools; do you want to paste your tools list so I can literally document each tool one by one?
+# ⚖️ License
+This project is currently private / internal.
