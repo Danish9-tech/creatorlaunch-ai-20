@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Zap, Copy, Check, Download, FileText } from "lucide-react";
+import { Loader2, Zap, Copy, Check, Download, FileText, FileJson } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -16,22 +16,35 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
-  // Clear previous results when tool changes
+  // FIX #7: Clear previous results when tool changes
   useEffect(() => {
     setResult("");
+    setShowSuccessToast(false);
   }, [toolSlug]);
+
+  // FIX #4: Auto-hide success toast after 5 seconds
+  useEffect(() => {
+    if (showSuccessToast) {
+      const timer = setTimeout(() => {
+        setShowSuccessToast(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessToast]);
 
   const copyToClipboard = async () => {
     await navigator.clipboard.writeText(result);
     setCopied(true);
     toast({ 
       title: "Copied to clipboard!",
-      duration: 5000 // Auto-hide after 5 seconds
+      duration: 5000 // FIX #4: Auto-hide after 5 seconds
     });
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // FIX #1: Export as Text
   const exportAsText = () => {
     const blob = new Blob([result], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -44,10 +57,11 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
     URL.revokeObjectURL(url);
     toast({ 
       title: "Exported successfully!",
-      duration: 5000
+      duration: 5000 // FIX #4: Auto-hide after 5 seconds
     });
   };
 
+  // FIX #1: Export as JSON
   const exportAsJSON = () => {
     const jsonData = {
       tool: toolTitle,
@@ -66,20 +80,19 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
     URL.revokeObjectURL(url);
     toast({ 
       title: "Exported as JSON!",
-      duration: 5000
+      duration: 5000 // FIX #4: Auto-hide after 5 seconds
     });
   };
 
+  // FIX #3: Gumroad publishing only for listings-generator
   const publishToGumroad = async () => {
-    // This will be called only from listings-generator
     toast({
       title: "Publishing to Gumroad...",
       description: "Creating draft product",
-      duration: 5000
+      duration: 5000 // FIX #4: Auto-hide after 5 seconds
     });
     
     try {
-      // Call Gumroad API to create draft
       const { data, error } = await supabase.functions.invoke('publish-gumroad-product', {
         body: {
           title: fields.productName || toolTitle,
@@ -93,14 +106,14 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
       toast({
         title: "Published to Gumroad!",
         description: "Product added as draft",
-        duration: 5000
+        duration: 5000 // FIX #4: Auto-hide after 5 seconds
       });
     } catch (error: any) {
       toast({
         title: "Publish failed",
         description: error.message,
         variant: "destructive",
-        duration: 5000
+        duration: 5000 // FIX #4: Auto-hide after 5 seconds
       });
     }
   };
@@ -110,13 +123,14 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
       toast({ 
         title: "Please fill in the fields first", 
         variant: "destructive",
-        duration: 5000
+        duration: 5000 // FIX #4: Auto-hide after 5 seconds
       });
       return;
     }
 
     setIsLoading(true);
     setResult("");
+    setShowSuccessToast(false);
 
     try {
       let authToken = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -127,6 +141,20 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
         }
       }
 
+      // FIX #8: Enhanced AI prompt with better instructions
+      const enhancedPrompt = {
+        tool: toolSlug,
+        toolTitle: toolTitle,
+        fields: fields,
+        instructions: `Generate high-quality, professional ${toolTitle} content. 
+        Ensure the output is:
+        - Well-structured and easy to read
+        - Professional and polished
+        - Actionable and practical
+        - Formatted with proper line breaks and sections
+        - Comprehensive yet concise`
+      };
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`,
         {
@@ -135,11 +163,7 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({
-            tool: toolSlug,
-            toolTitle: toolTitle,
-            fields: fields,
-          }),
+          body: JSON.stringify(enhancedPrompt),
         }
       );
 
@@ -165,16 +189,18 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
         setResult((prev) => prev + chunk);
       }
 
+      // FIX #4: Show success toast with auto-hide
+      setShowSuccessToast(true);
       toast({ 
         title: "Generation Successful!",
-        duration: 5000
+        duration: 5000 // Auto-hide after 5 seconds
       });
     } catch (error: any) {
       toast({
         title: "Generation Error",
         description: error.message,
         variant: "destructive",
-        duration: 5000
+        duration: 5000 // FIX #4: Auto-hide after 5 seconds
       });
     } finally {
       setIsLoading(false);
@@ -183,70 +209,91 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
 
   return (
     <div className="space-y-4 md:space-y-6 w-full">
+      {/* FIX #5 & #6: Mobile responsive button with better text sizing and alignment */}
       <Button
         onClick={generateStream}
         disabled={isLoading}
-        className="w-full gradient-primary text-primary-foreground h-10 sm:h-12 text-sm sm:text-lg font-semibold btn-animate"
+        className="w-full gradient-primary text-primary-foreground h-11 sm:h-12 text-base sm:text-lg font-semibold btn-animate px-4 sm:px-6"
       >
         {isLoading ? (
-          <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+          <>
+            <Loader2 className="mr-2 h-5 w-5 sm:h-5 sm:w-5 animate-spin flex-shrink-0" />
+            <span className="truncate">AI is Thinking...</span>
+          </>
         ) : (
-          <Zap className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+          <>
+            <Zap className="mr-2 h-5 w-5 sm:h-5 sm:w-5 flex-shrink-0" />
+            <span className="truncate">Generate {toolTitle}</span>
+          </>
         )}
-        <span className="truncate">{isLoading ? "AI is Thinking..." : `Generate ${toolTitle}`}</span>
       </Button>
+
+      {/* FIX #4: Success toast notification */}
+      {showSuccessToast && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
+            <Check className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+            <span className="text-sm sm:text-base font-medium">Content generated successfully!</span>
+          </div>
+        </div>
+      )}
 
       {result && (
         <Card className="border-primary/20 bg-card/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
           <CardContent className="p-4 sm:p-6 relative">
-            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex flex-wrap gap-1 sm:gap-2 z-10">
+            {/* FIX #1 & #6: Export buttons with mobile responsive sizing */}
+            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex flex-wrap gap-1.5 sm:gap-2 z-10">
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7 sm:h-8 sm:w-8"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={copyToClipboard}
                 title="Copy to clipboard"
               >
                 {copied ? (
-                  <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+                  <Check className="h-4 w-4 sm:h-4 sm:w-4 text-green-500" />
                 ) : (
-                  <Copy className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <Copy className="h-4 w-4 sm:h-4 sm:w-4" />
                 )}
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7 sm:h-8 sm:w-8"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={exportAsText}
                 title="Export as TXT"
               >
-                <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                <FileText className="h-4 w-4 sm:h-4 sm:w-4" />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7 sm:h-8 sm:w-8"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={exportAsJSON}
                 title="Export as JSON"
               >
-                <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                <FileJson className="h-4 w-4 sm:h-4 sm:w-4" />
               </Button>
             </div>
 
-            <div className="prose prose-sm dark:prose-invert max-w-none mt-8 sm:mt-0">
-              <div className="whitespace-pre-wrap font-sans text-sm sm:text-base text-foreground leading-relaxed break-words">
+            {/* FIX #2: Clean, well-structured content display */}
+            <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none mt-12 sm:mt-10">
+              <div className="whitespace-pre-wrap font-sans text-sm sm:text-base text-foreground leading-relaxed break-words bg-muted/30 rounded-lg p-4 sm:p-6">
                 {result}
               </div>
             </div>
 
+            {/* FIX #3: Marketplace button ONLY for listings-generator */}
             {showMarketplace && (
-              <div className="mt-4 pt-4 border-t border-border flex flex-col sm:flex-row gap-2 sm:justify-end">
-                <Button 
-                  onClick={publishToGumroad}
-                  className="w-full sm:w-auto gradient-primary text-xs sm:text-sm"
-                >
-                  Publish to Gumroad (Draft)
-                </Button>
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                  <Button 
+                    onClick={publishToGumroad}
+                    className="w-full sm:w-auto gradient-primary text-sm sm:text-base h-10 sm:h-11 px-4 sm:px-6"
+                  >
+                    Publish to Gumroad (Draft)
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
