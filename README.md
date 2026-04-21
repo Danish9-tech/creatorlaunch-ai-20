@@ -79,7 +79,7 @@ The system is split across three platforms:
 ### 📦 Deploy (Vercel)
 * Main branch deployments
 * Environment variables for Supabase + AI keys + observability
-* Edge function secrets (e.g. `GROK_API_KEY`) configured in Supabase project settings
+* Edge function secrets (e.g. `Groq_API_KEY`) configured in Supabase project settings
 
 ---
 
@@ -108,7 +108,7 @@ ai-generate Execution Flow:
 
 Validate: Plan/credits check and usage logging.
 
-Auth: Chooses API key (User key from user_api_keys if available, else platform GROK_API_KEY).
+Auth: Chooses API key (User key from user_api_keys if available, else platform Groq_API_KEY).
 
 LLM Call: Calls Groq Llama 3.3 70B with a tool‑specific prompt.
 
@@ -162,7 +162,7 @@ Profile Fallback: profiles.plan and profiles.credits.
 | Table | Purpose | Key Fields |
 | :--- | :--- | :--- |
 | `profiles` | User Data | id, email, plan, credits |
-| `user_api_keys` | Encrypted Keys | provider (Grok/OpenAI), encrypted_key |
+| `user_api_keys` | Encrypted Keys | provider (Groq/OpenAI), encrypted_key |
 | `products` | Content Hub | user_id, title, niche, status (Draft/Pub) |
 | `ai_usage_logs` | Analytics | timestamp, tool_id, credits_used |
 
@@ -182,7 +182,7 @@ git clone https://github.com/Danish9-tech/creatorlaunch-ai-20.git
 cd creatorlaunch-ai-20
 pnpm install
 pnpm dev
-Note: Create .env with VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and GROK_API_KEY.
+Note: Create .env with VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and Groq_API_KEY.
 
 # 🚀 Deployment (Vercel)
 CI/CD: GitHub ➔ Vercel.
