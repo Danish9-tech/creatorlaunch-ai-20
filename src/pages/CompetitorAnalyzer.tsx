@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart3, Sparkles, Loader2, TrendingUp, TrendingDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useEffect, useState } from "react";
+import { ResultDisplay } from "@/components/ResultDisplay";
 
 interface Competitor {
   name: string;
