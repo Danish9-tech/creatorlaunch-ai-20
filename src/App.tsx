@@ -31,7 +31,6 @@ const LicenseGenerator    = lazy(() => import("./pages/LicenseGenerator"));
 const AffiliateBuilder    = lazy(() => import("./pages/AffiliateBuilder"));
 const ListingTranslator   = lazy(() => import("./pages/ListingTranslator"));
 const LaunchChecklist     = lazy(() => import("./pages/LaunchChecklist"));
-const ExportTools         = lazy(() => import("./pages/ExportTools"));
 const Profile             = lazy(() => import("./pages/Profile"));
 const Settings            = lazy(() => import("./pages/Settings"));
 const ToolPage            = lazy(() => import("./pages/ToolPage"));
@@ -100,7 +99,6 @@ const App = () => (
               <Route path="/affiliate-builder" element={<AffiliateBuilder />} />
               <Route path="/listing-translator" element={<ListingTranslator />} />
               <Route path="/launch-checklist" element={<LaunchChecklist />} />
-              <Route path="/export-tools" element={<ExportTools />} />
               <Route path="/marketplace" element={<MarketplaceConnect />} />
               <Route path="/ai-providers" element={<AIProviders />} />
               <Route path="/profile" element={<Profile />} />
