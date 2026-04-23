@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, Lightbulb, TrendingUp, FileText, Megaphone,
   Image, Search, BarChart3, DollarSign, Layers, Shield, Users, Languages,
-  CheckSquare, Download, User, Settings, LogOut, Wand2,
+  CheckSquare, User, Settings, LogOut, Wand2,
   ChevronDown, Wrench, PieChart,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -17,6 +17,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const mainNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -46,12 +47,6 @@ const utilNav = [
   { title: "AI Providers", url: "/ai-providers", icon: Wand2 },
 ];
 
-const bottomItems = [
-  { title: "Profile", url: "/profile", icon: User },
-    { title: "Admin", url: "/admin", icon: Shield },
-  { title: "Settings", url: "/settings", icon: Settings },
-];
-
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -59,6 +54,19 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const [toolsOpen, setToolsOpen] = useState(false);
   const [microOpen, setMicroOpen] = useState<Record<string, boolean>>({});
+
+  // Admin check hook
+  const { data: isAdmin } = useQuery({
+    queryKey: ['is-admin'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('is_admin');
+      if (error) {
+        console.error('Error checking admin status:', error);
+        return false;
+      }
+      return data;
+    },
+  });
 
   const toggleMicro = (key: string) => setMicroOpen(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -202,16 +210,39 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
-          {bottomItems.map(item => (
-            <SidebarMenuItem key={item.title}>
+          {/* Profile */}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <NavLink to="/profile" end className="text-sidebar-foreground/70 hover:text-sidebar-primary-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                <User className="mr-2 h-4 w-4 shrink-0" />
+                {!collapsed && <span>Profile</span>}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* Conditional Admin Shield */}
+          {isAdmin && (
+            <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <NavLink to={item.url} end className="text-sidebar-foreground/70 hover:text-sidebar-primary-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
-                  <item.icon className="mr-2 h-4 w-4 shrink-0" />
-                  {!collapsed && <span>{item.title}</span>}
+                <NavLink to="/admin" className="text-sidebar-foreground/70 hover:text-sidebar-primary-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                  <Shield className="mr-2 h-4 w-4 shrink-0 text-amber-500" />
+                  {!collapsed && <span>Admin</span>}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          ))}
+          )}
+
+          {/* Settings */}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <NavLink to="/settings" end className="text-sidebar-foreground/70 hover:text-sidebar-primary-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                <Settings className="mr-2 h-4 w-4 shrink-0" />
+                {!collapsed && <span>Settings</span>}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* Logout */}
           <SidebarMenuItem>
             <SidebarMenuButton className="text-sidebar-foreground/70 hover:text-primary hover:bg-sidebar-accent cursor-pointer" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4 shrink-0" />
