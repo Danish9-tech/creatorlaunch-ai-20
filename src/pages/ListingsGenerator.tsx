@@ -55,17 +55,20 @@ const ListingsGenerator = () => {
 
     setIsPublishing(true);
     try {
-      // Get Gumroad connection from user profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('gumroad_access_token')
-        .eq('id', userId)
-        .single();
+      // Look in 'marketplace_connections' for the linked account
+      const { data: connection, error: connError } = await supabase
+        .from('marketplace_connections')
+        .select('settings')
+        .eq('user_id', userId)
+        .eq('marketplace_id', 'gumroad')
+        .maybeSingle();
 
-      if (profileError || !profile?.gumroad_access_token) {
+      const gumroadKey = connection?.settings?.api_key;
+
+      if (connError || !gumroadKey) {
         toast({ 
           title: "Connection Required", 
-          description: "Please connect your Gumroad account in Settings", 
+          description: "Please connect your Gumroad account in Marketplace Connect", 
           variant: "destructive" 
         });
         setIsPublishing(false);
@@ -77,7 +80,7 @@ const ListingsGenerator = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          access_token: profile.gumroad_access_token,
+          access_token: gumroadKey,
           name: result.title,
           description: result.description,
           price: 0,
