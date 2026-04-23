@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Store, Link2, CheckCircle2, ExternalLink, ShoppingBag, Globe, Palette, Loader2 } from "lucide-react";
+import { Store, Link2, CheckCircle2, ExternalLink, ShoppingBag, Globe, Palette, Loader2, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -45,12 +45,48 @@ const marketplaces: MarketplaceConfig[] = [
     ],
   },
 ];
+const ALL_MARKETPLACES: MarketplaceConfig[] = [
+  {
+    id: "gumroad",
+    name: "Gumroad",
+    icon: ShoppingBag,
+    description: "Sell digital products directly to your audience",
+    color: "from-pink-500 to-rose-500",
+    fields: [
+      { key: "api_key", label: "Access Token", placeholder: "Your Gumroad access token" },
+      { key: "store_url", label: "Store URL (optional)", placeholder: "https://yourstore.gumroad.com" },
+    ],
+  },
+  {
+    id: "etsy",
+    name: "Etsy",
+    icon: Palette,
+    description: "Reach buyers on the creative marketplace",
+    color: "from-orange-500 to-amber-500",
+    fields: [
+      { key: "api_key", label: "OAuth Token", placeholder: "Your Etsy OAuth token" },
+      { key: "shop_id", label: "Shop ID", placeholder: "Your Etsy shop ID" },
+    ],
+  },
+  {
+    id: "shopify",
+    name: "Shopify",
+    icon: ShoppingCart,
+    description: "Publish drafts to your Shopify store",
+    color: "from-emerald-500 to-green-600",
+    fields: [
+      { key: "api_key", label: "Admin API Access Token", placeholder: "shpat_xxx" },
+      { key: "store_url", label: "Store URL", placeholder: "your-store.myshopify.com" },
+    ],
+  },
+];
 
 const MarketplaceConnect = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, Record<string, string>>>({});
   const [connections, setConnections] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -78,15 +114,42 @@ const MarketplaceConnect = () => {
 
   const handleConnect = async (marketplaceId: string) => {
     const data = formData[marketplaceId];
-    if (!data || !userId) return;
+    if (!userId) {
+      toast({ title: "Please sign in first", variant: "destructive" });
+      return;
+    }
+    const mp = ALL_MARKETPLACES.find((m) => m.id === marketplaceId);
+    const requiredKeys = mp?.fields.filter((f) => !f.label.includes("optional")).map((f) => f.key) ?? [];
+    const missing = requiredKeys.filter((k) => !data?.[k]?.trim());
+    if (missing.length) {
+      toast({ title: "Missing fields", description: `Please fill: ${missing.join(", ")}`, variant: "destructive" });
+      return;
+    }
     setIsProcessing(marketplaceId);
-    const { error } = await supabase.from('marketplace_connections').upsert({
-      user_id: userId,
-      marketplace_id: marketplaceId,
-      settings: data,
-      is_active: true
-    });
-    if (!error) toast({ title: "Connected successfully" });
+    const { data: row, error } = await supabase
+      .from('marketplace_connections')
+      .upsert(
+        {
+          user_id: userId,
+          marketplace_id: marketplaceId,
+          settings: data,
+          is_active: true,
+        },
+        { onConflict: 'user_id,marketplace_id' }
+      )
+      .select()
+      .single();
+    if (error) {
+      toast({ title: "Connect failed", description: error.message, variant: "destructive" });
+    } else {
+      setConnections((prev) => {
+        const filtered = prev.filter((c) => c.marketplace_id !== marketplaceId);
+        return row ? [...filtered, row] : filtered;
+      });
+      setFormData((prev) => ({ ...prev, [marketplaceId]: {} }));
+      setOpenDialog(null);
+      toast({ title: `${mp?.name ?? marketplaceId} connected` });
+    }
     setIsProcessing(null);
   };
 
@@ -114,7 +177,7 @@ const MarketplaceConnect = () => {
       <div className="space-y-6 max-w-4xl mx-auto">
         <h1 className="text-3xl font-display font-bold">Marketplace Connect</h1>
         <div className="grid md:grid-cols-2 gap-6">
-          {marketplaces.map((mp) => (
+          {ALL_MARKETPLACES.map((mp) => (
             <Card key={mp.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -124,10 +187,11 @@ const MarketplaceConnect = () => {
                   {isConnected(mp.id) && <Badge className="bg-green-500">Connected</Badge>}
                 </div>
                 <CardTitle className="mt-4">{mp.name}</CardTitle>
+                <CardDescription>{mp.description}</CardDescription>
               </CardHeader>
               <CardContent>
                 {!isConnected(mp.id) ? (
-                  <Dialog>
+                  <Dialog open={openDialog === mp.id} onOpenChange={(o) => setOpenDialog(o ? mp.id : null)}>
                     <DialogTrigger asChild><Button className="w-full">Connect</Button></DialogTrigger>
                     <DialogContent>
                       <DialogHeader><DialogTitle>Connect {mp.name}</DialogTitle></DialogHeader>
@@ -135,10 +199,30 @@ const MarketplaceConnect = () => {
                         {mp.fields.map(f => (
                           <div key={f.key} className="space-y-1">
                             <Label>{f.label}</Label>
-                            <Input type="password" onChange={e => setFormData(prev => ({...prev, [mp.id]: {...prev[mp.id], [f.key]: e.target.value}}))} />
+                            <Input
+                              type={f.key === "api_key" ? "password" : "text"}
+                              placeholder={f.placeholder}
+                              value={formData[mp.id]?.[f.key] ?? ""}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  [mp.id]: { ...prev[mp.id], [f.key]: e.target.value },
+                                }))
+                              }
+                            />
                           </div>
                         ))}
-                        <Button className="w-full" onClick={() => handleConnect(mp.id)}>Connect Now</Button>
+                        <Button
+                          className="w-full"
+                          onClick={() => handleConnect(mp.id)}
+                          disabled={isProcessing === mp.id}
+                        >
+                          {isProcessing === mp.id ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Connecting...</>
+                          ) : (
+                            "Connect Now"
+                          )}
+                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
