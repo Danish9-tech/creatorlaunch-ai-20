@@ -16,44 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, CreditCard, Check, Globe, Loader2 } from "lucide-react";
+import { Trash2, CreditCard, Check, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
 
 const PREFS_KEY = "creatorwand_prefs";
 
-type Platform = "gumroad" | "etsy" | "shopify" | "creative_market" | "payhip" | "teachable";
-type PlatformState = {
-  platformName: string;
-  accessToken: string;
-  maskedToken: string;
-  hasAccessToken: boolean;
-  storeUrl: string;
-  isActive: boolean;
-  productsSynced: number;
-  lastSyncedAt: string | null;
-};
-
-const sellingPlatforms: Platform[] = ["gumroad", "etsy", "shopify", "creative_market", "payhip", "teachable"];
-const platformLabels: Record<Platform, string> = {
-  gumroad: "Gumroad", etsy: "Etsy", shopify: "Shopify",
-  creative_market: "Creative Market", payhip: "Payhip", teachable: "Teachable",
-};
-
 function loadPrefs() {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}"); } catch { return {}; }
-}
-
-function createInitialPlatformState(): Record<Platform, PlatformState> {
-  return {
-    gumroad: { platformName: "Gumroad", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
-    etsy: { platformName: "Etsy", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
-    shopify: { platformName: "Shopify", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
-    creative_market: { platformName: "Creative Market", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
-    payhip: { platformName: "Payhip", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
-    teachable: { platformName: "Teachable", accessToken: "", maskedToken: "", hasAccessToken: false, storeUrl: "", isActive: true, productsSynced: 0, lastSyncedAt: null },
-  };
 }
 
 const plans = [
@@ -69,10 +39,6 @@ const Settings = () => {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [userPlan, setUserPlan] = useState("free");
   const [userCredits, setUserCredits] = useState(0);
-  const [platformState, setPlatformState] = useState<Record<Platform, PlatformState>>(() => createInitialPlatformState());
-  const [loadingPlatforms, setLoadingPlatforms] = useState(true);
-  const [savingPlatform, setSavingPlatform] = useState<Platform | null>(null);
-  const [deletingPlatform, setDeletingPlatform] = useState<Platform | null>(null);
 
   const toggle = (key: string) => {
     const next = { ...prefs, [key]: !prefs[key] };
@@ -98,24 +64,6 @@ const Settings = () => {
     loadUserPlan();
   }, []);
 
-  useEffect(() => {
-    const loadPlatformIntegrations = async () => {
-      setLoadingPlatforms(true);
-      try {
-        const { data, error } = await supabase.functions.invoke("manage-platform-integrations", { body: { action: "list" } });
-        if (error) throw error;
-        const next = createInitialPlatformState();
-        for (const entry of data?.integrations || []) {
-          const platform = entry.platform as Platform;
-          if (!next[platform]) continue;
-          next[platform] = { ...next[platform], platformName: entry.platformName || next[platform].platformName, hasAccessToken: !!entry.hasAccessToken, maskedToken: entry.maskedToken || "", storeUrl: entry.settings?.store_url || "", isActive: entry.isActive ?? true, productsSynced: entry.productsSynced ?? 0, lastSyncedAt: entry.lastSyncedAt || null };
-        }
-        setPlatformState(next);
-      } catch { /* silent */ } finally { setLoadingPlatforms(false); }
-    };
-    loadPlatformIntegrations();
-  }, []);
-
   const handleDarkMode = (v: boolean) => {
     setDarkMode(v);
     toast({ title: `Dark mode ${v ? "enabled" : "disabled"}` });
@@ -125,35 +73,6 @@ const Settings = () => {
     localStorage.clear();
     toast({ title: "Account deleted" });
     navigate("/");
-  };
-
-  const updatePlatformField = (platform: Platform, field: keyof PlatformState, value: string | boolean | number | null) => {
-    setPlatformState(prev => ({ ...prev, [platform]: { ...prev[platform], [field]: value } }));
-  };
-
-  const handleSavePlatform = async (platform: Platform) => {
-    const state = platformState[platform];
-    setSavingPlatform(platform);
-    try {
-      const { data, error } = await supabase.functions.invoke("manage-platform-integrations", { body: { action: "save", platform, platformName: state.platformName.trim() || platformLabels[platform], accessToken: state.accessToken.trim(), storeUrl: state.storeUrl.trim(), isActive: state.isActive } });
-      if (error) throw error;
-      setPlatformState(prev => ({ ...prev, [platform]: { ...prev[platform], accessToken: "", maskedToken: data?.integration?.maskedToken || prev[platform].maskedToken, hasAccessToken: !!data?.integration?.hasAccessToken, storeUrl: data?.integration?.settings?.store_url || prev[platform].storeUrl, isActive: data?.integration?.isActive ?? prev[platform].isActive } }));
-      toast({ title: `${platformLabels[platform]} connected` });
-    } catch (err: any) {
-      toast({ title: "Connection failed", description: err.message, variant: "destructive" });
-    } finally { setSavingPlatform(null); }
-  };
-
-  const handleDeletePlatform = async (platform: Platform) => {
-    setDeletingPlatform(platform);
-    try {
-      const { error } = await supabase.functions.invoke("manage-platform-integrations", { body: { action: "delete", platform } });
-      if (error) throw error;
-      setPlatformState(prev => ({ ...prev, [platform]: createInitialPlatformState()[platform] }));
-      toast({ title: `${platformLabels[platform]} disconnected` });
-    } catch (err: any) {
-      toast({ title: "Disconnect failed", description: err.message, variant: "destructive" });
-    } finally { setDeletingPlatform(null); }
   };
 
   return (
@@ -194,40 +113,6 @@ const Settings = () => {
               <Label>Show tooltips</Label>
               <Switch checked={!!prefs.show_tooltips} onCheckedChange={() => toggle("show_tooltips")} />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Platform Connections */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><Globe className="w-4 h-4" /> Platform Connections</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {loadingPlatforms ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading platforms...
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {sellingPlatforms.map(platform => {
-                  const state = platformState[platform];
-                  const busy = savingPlatform === platform || deletingPlatform === platform;
-                  return (
-                    <div key={platform} className="rounded-lg border p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium">{platformLabels[platform]}</p>
-                        {state.hasAccessToken ? <Badge>Connected</Badge> : <Badge variant="secondary">Disconnected</Badge>}
-                      </div>
-                      <Input type="password" value={state.accessToken} onChange={e => updatePlatformField(platform, "accessToken", e.target.value)} placeholder="Access Token" />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleSavePlatform(platform)} disabled={busy}>Connect</Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDeletePlatform(platform)} disabled={busy || !state.hasAccessToken}>Disconnect</Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -287,7 +172,7 @@ const Settings = () => {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>This will permanently delete your account and all data.</AlertDialogDescription>
+                  <AlertDialogTitle>This will permanently delete your account and all data.</AlertDialogTitle>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
