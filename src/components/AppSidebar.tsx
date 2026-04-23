@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -55,7 +55,7 @@ export function AppSidebar() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [microOpen, setMicroOpen] = useState<Record<string, boolean>>({});
 
-  // Admin check hook
+  // Admin check hook - using the standard supabase client directly
   const { data: isAdmin } = useQuery({
     queryKey: ['is-admin'],
     queryFn: async () => {
@@ -97,7 +97,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Main */}
+        {/* Main Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs tracking-wider">
             {!collapsed && "Main"}
@@ -147,7 +147,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Micro-Tools */}
+        {/* Micro-Tools Section */}
         {!collapsed && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs tracking-wider">
@@ -189,7 +189,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Utilities */}
+        {/* Utilities Section */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -210,7 +210,6 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
-          {/* Profile */}
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <NavLink to="/profile" end className="text-sidebar-foreground/70 hover:text-sidebar-primary-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
@@ -220,19 +219,18 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-          {/* Conditional Admin Shield */}
+          {/* Conditional Admin Link */}
           {isAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <NavLink to="/admin" className="text-sidebar-foreground/70 hover:text-sidebar-primary-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
                   <Shield className="mr-2 h-4 w-4 shrink-0 text-amber-500" />
-                  {!collapsed && <span>Admin</span>}
+                  {!collapsed && <span>Admin Dashboard</span>}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
 
-          {/* Settings */}
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <NavLink to="/settings" end className="text-sidebar-foreground/70 hover:text-sidebar-primary-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
@@ -242,7 +240,6 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-          {/* Logout */}
           <SidebarMenuItem>
             <SidebarMenuButton className="text-sidebar-foreground/70 hover:text-primary hover:bg-sidebar-accent cursor-pointer" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4 shrink-0" />
