@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Zap, Copy, Check, Download, FileText, FileJson } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ToolResultDisplay } from "@/components/ToolResultDisplay";
 
 interface Props {
   toolSlug: string;
@@ -17,11 +18,13 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [parsed, setParsed] = useState<any>(null);
 
   // FIX #7: Clear previous results when tool changes
   useEffect(() => {
     setResult("");
     setShowSuccessToast(false);
+    setParsed(null);
   }, [toolSlug]);
 
   // FIX #4: Auto-hide success toast after 5 seconds
@@ -189,6 +192,21 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
         setResult((prev) => prev + chunk);
       }
 
+      // Try to parse the final result as JSON for structured display
+      setResult((finalText) => {
+        try {
+          const cleaned = finalText
+            .replace(/```json\s*/gi, "")
+            .replace(/```\s*/gi, "")
+            .trim();
+          const match = cleaned.match(/(\[\s*[\s\S]*\]|\{[\s\S]*\})/);
+          if (match) setParsed(JSON.parse(match[0]));
+        } catch {
+          /* keep as plain text */
+        }
+        return finalText;
+      });
+
       // FIX #4: Show success toast with auto-hide
       setShowSuccessToast(true);
       toast({ 
@@ -239,65 +257,28 @@ export const AIGenerator = ({ toolSlug, toolTitle, fields, showMarketplace = fal
       )}
 
       {result && (
-        <Card className="border-primary/20 bg-card/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <CardContent className="p-4 sm:p-6 relative">
-            {/* FIX #1 & #6: Export buttons with mobile responsive sizing */}
-            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex flex-wrap gap-1.5 sm:gap-2 z-10">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 sm:h-9 sm:w-9"
-                onClick={copyToClipboard}
-                title="Copy to clipboard"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 sm:h-4 sm:w-4 text-green-500" />
-                ) : (
-                  <Copy className="h-4 w-4 sm:h-4 sm:w-4" />
-                )}
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 sm:h-9 sm:w-9"
-                onClick={exportAsText}
-                title="Export as TXT"
-              >
-                <FileText className="h-4 w-4 sm:h-4 sm:w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 sm:h-9 sm:w-9"
-                onClick={exportAsJSON}
-                title="Export as JSON"
-              >
-                <FileJson className="h-4 w-4 sm:h-4 sm:w-4" />
-              </Button>
-            </div>
-
-            {/* FIX #2: Clean, well-structured content display */}
-            <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none mt-12 sm:mt-10">
-              <div className="whitespace-pre-wrap font-sans text-sm sm:text-base text-foreground leading-relaxed break-words bg-muted/30 rounded-lg p-4 sm:p-6">
-                {result}
-              </div>
-            </div>
-
-            {/* FIX #3: Marketplace button ONLY for listings-generator */}
-            {showMarketplace && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
-                  <Button 
-                    onClick={publishToGumroad}
-                    className="w-full sm:w-auto gradient-primary text-sm sm:text-base h-10 sm:h-11 px-4 sm:px-6"
-                  >
-                    Publish to Gumroad (Draft)
-                  </Button>
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
+          {isLoading && !parsed ? (
+            <Card className="border-primary/20 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 sm:p-6">
+                <div className="whitespace-pre-wrap font-sans text-sm sm:text-base text-foreground leading-relaxed break-words bg-muted/30 rounded-lg p-4 sm:p-6">
+                  {result}
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <ToolResultDisplay result={parsed ?? result} toolSlug={toolSlug} />
+          )}
+
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={exportAsText}>
+              <FileText className="h-4 w-4 mr-2" /> TXT
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportAsJSON}>
+              <FileJson className="h-4 w-4 mr-2" /> JSON
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

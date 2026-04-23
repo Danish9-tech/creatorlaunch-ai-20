@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Sparkles, Loader2, Tag, Search, Shield, Upload } from "lucide-react";
+import { FileText, Sparkles, Loader2, Tag, Search, Shield, Upload, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -17,14 +17,21 @@ const ListingsGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [connections, setConnections] = useState<string[]>([]);
 
-  // Get user session using the standard client to ensure stability on Vercel
   useEffect(() => {
-    const getUser = async () => {
+    const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
+      if (!user) return;
+      setUserId(user.id);
+      const { data } = await supabase
+        .from("marketplace_connections")
+        .select("marketplace_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+      setConnections((data || []).map((c: any) => c.marketplace_id));
     };
-    getUser();
+    init();
   }, []);
 
   const handleGenerate = async () => {
@@ -47,55 +54,58 @@ const ListingsGenerator = () => {
     }
   };
 
-  const publishToGumroad = async () => {
+  const platformId = platform.toLowerCase();
+  const isPlatformConnected = connections.includes(platformId);
+  const supportsDirectPublish = ["gumroad", "etsy", "shopify"].includes(platformId);
+
+  const publishToMarketplace = async () => {
     if (!result || !userId) {
-      toast({ title: "Operation failed", description: "Please generate a listing first", variant: "destructive" });
+      toast({ title: "Generate a listing first", variant: "destructive" });
       return;
     }
-
+    if (!supportsDirectPublish) {
+      toast({
+        title: `${platform} doesn't support direct publishing`,
+        description: "Use Copy buttons to paste your listing manually.",
+      });
+      return;
+    }
+    if (!isPlatformConnected) {
+      toast({
+        title: "Connection Required",
+        description: `Connect your ${platform} account in Marketplace Connect first.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setIsPublishing(true);
     try {
-      // 1. Fetch the token from marketplace_connections saved via Marketplace Connect page
-      const { data: connection, error: connError } = await supabase
-        .from('marketplace_connections')
-        .select('settings')
-        .eq('user_id', userId)
-        .eq('marketplace_id', 'gumroad')
-        .maybeSingle();
-
-      const gumroadKey = connection?.settings?.api_key;
-
-      if (connError || !gumroadKey) {
-        toast({ 
-          title: "Connection Required", 
-          description: "Please connect your Gumroad account in Marketplace Connect", 
-          variant: "destructive" 
-        });
-        setIsPublishing(false);
-        return;
-      }
-
-      // 2. Call the Edge Function using the name verified in your dashboard
-      const { data, error: publishError } = await supabase.functions.invoke("publish-gumroad-product", {
+      const tags =
+        typeof result.tags === "string"
+          ? result.tags.split(",").map((t: string) => t.trim())
+          : Array.isArray(result.tags)
+          ? result.tags
+          : [];
+      const { data, error } = await supabase.functions.invoke("publish-to-marketplace", {
         body: {
-          access_token: gumroadKey,
-          name: result.title,
+          platform: platformId,
+          title: result.title,
           description: result.description,
-          price: 0,
+          price: result.price ?? 0,
+          tags,
         },
       });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
 
-      if (publishError) throw new Error(publishError.message);
-
-      toast({ title: "Success!", description: "Draft created successfully on Gumroad!" });
-
-      // 3. Open the product edit page if ID is returned
-      if (data?.product?.id) {
-        window.open(`https://gumroad.com/products/${data.product.id}/edit`, '_blank');
-      }
-    } catch (error: any) {
-      console.error('Gumroad publish error:', error);
-      toast({ title: "Publish failed", description: error.message, variant: "destructive" });
+      toast({
+        title: `Published draft to ${platform}!`,
+        description: "Opening the product editor in a new tab.",
+      });
+      if ((data as any)?.url) window.open((data as any).url, "_blank");
+    } catch (err: any) {
+      console.error("Publish error:", err);
+      toast({ title: "Publish failed", description: err.message, variant: "destructive" });
     } finally {
       setIsPublishing(false);
     }
@@ -141,16 +151,23 @@ const ListingsGenerator = () => {
                   )}
                 </Button>
 
-                {result && (
+                {result && platform && (
                   <Button
-                    onClick={publishToGumroad}
-                    disabled={isPublishing}
-                    className="w-full bg-pink-600 hover:bg-pink-700 text-white transition-colors"
+                    onClick={publishToMarketplace}
+                    disabled={isPublishing || !supportsDirectPublish}
+                    className="w-full gradient-primary text-primary-foreground btn-animate"
                   >
                     {isPublishing ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing to {platform}...</>
+                    ) : supportsDirectPublish ? (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        {isPlatformConnected
+                          ? `Publish Draft to ${platform}`
+                          : `Connect ${platform} to Publish`}
+                      </>
                     ) : (
-                      <><Upload className="mr-2 h-4 w-4" /> Publish to Gumroad (Draft)</>
+                      <><ExternalLink className="mr-2 h-4 w-4" /> {platform} doesn't support direct publish</>
                     )}
                   </Button>
                 )}

@@ -70,6 +70,7 @@ const MarketplaceConnect = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_connections', filter: `user_id=eq.${userId}` }, 
       (payload) => {
         if (payload.eventType === 'INSERT') setConnections(prev => [...prev, payload.new]);
+        if (payload.eventType === 'UPDATE') setConnections(prev => prev.map(c => c.id === (payload.new as any).id ? payload.new : c));
         if (payload.eventType === 'DELETE') setConnections(prev => prev.filter(c => c.id !== payload.old.id));
       }).subscribe();
     return () => { channel.unsubscribe(); };
