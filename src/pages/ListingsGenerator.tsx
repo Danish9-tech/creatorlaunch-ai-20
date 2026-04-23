@@ -18,7 +18,7 @@ const ListingsGenerator = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  // Get user session manually
+  // Get user session using the standard client
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -49,24 +49,30 @@ const ListingsGenerator = () => {
 
   const publishToGumroad = async () => {
     if (!result || !userId) {
-      toast({ title: "Please generate a listing first", variant: "destructive" });
+      toast({ title: "Operation failed", description: "Please generate a listing first", variant: "destructive" });
       return;
     }
 
     setIsPublishing(true);
     try {
-      const { data: profile } = await supabase
+      // Get Gumroad connection from user profile
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('gumroad_access_token')
         .eq('id', userId)
         .single();
 
-      if (!profile?.gumroad_access_token) {
-        toast({ title: "Connection Required", description: "Please connect your Gumroad account in Settings", variant: "destructive" });
+      if (profileError || !profile?.gumroad_access_token) {
+        toast({ 
+          title: "Connection Required", 
+          description: "Please connect your Gumroad account in Settings", 
+          variant: "destructive" 
+        });
         setIsPublishing(false);
         return;
       }
 
+      // Create draft product on Gumroad
       const response = await fetch('/api/gumroad/create-draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,6 +94,7 @@ const ListingsGenerator = () => {
         window.open(`https://gumroad.com/products/${data.product.id}/edit`, '_blank');
       }
     } catch (error: any) {
+      console.error('Gumroad publish error:', error);
       toast({ title: "Publish failed", description: error.message, variant: "destructive" });
     } finally {
       setIsPublishing(false);
@@ -123,8 +130,16 @@ const ListingsGenerator = () => {
                 </Button>
 
                 {result && (
-                  <Button onClick={publishToGumroad} disabled={isPublishing} className="w-full bg-pink-600 hover:bg-pink-700 text-white">
-                    {isPublishing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</> : <><Upload className="mr-2 h-4 w-4" /> Publish to Gumroad (Draft)</>}
+                  <Button
+                    onClick={publishToGumroad}
+                    disabled={isPublishing}
+                    className="w-full bg-pink-600 hover:bg-pink-700 text-white transition-colors"
+                  >
+                    {isPublishing ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>
+                    ) : (
+                      <><Upload className="mr-2 h-4 w-4" /> Publish to Gumroad (Draft)</>
+                    )}
                   </Button>
                 )}
               </div>
@@ -137,19 +152,43 @@ const ListingsGenerator = () => {
                 <CardHeader><CardTitle className="flex items-center gap-2 text-primary"><FileText className="w-5 h-5" />SEO Title</CardTitle></CardHeader>
                 <CardContent><p className="font-bold text-xl">{result.title}</p></CardContent>
               </Card>
+
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4" />Full Description</CardTitle></CardHeader>
                 <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{result.description}</p></CardContent>
               </Card>
+
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><Tag className="w-4 h-4" />Tags</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {result.tags?.split(",").map((tag: string, i: number) => (
-                      <span key={i} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs">{tag.trim()}</span>
+                      <span key={i} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">{tag.trim()}</span>
                     ))}
                   </div>
                 </CardContent>
+              </Card>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Search className="w-4 h-4" />SEO Keywords</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {result.seoKeywords?.split(",").map((kw: string, i: number) => (
+                        <span key={i} className="px-2 py-1 bg-muted rounded-md text-xs">{kw.trim()}</span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Users className="w-4 h-4" />Target Audience</CardTitle></CardHeader>
+                  <CardContent><p className="text-sm">{result.targetAudience}</p></CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="w-4 h-4" />Policies</CardTitle></CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap">{result.policies}</p></CardContent>
               </Card>
             </div>
           )}
