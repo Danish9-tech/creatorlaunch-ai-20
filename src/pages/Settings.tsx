@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, CreditCard, Check, Loader2 } from "lucide-react";
+import { Trash2, CreditCard, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -54,14 +54,17 @@ const Settings = () => {
   }, [darkMode]);
 
   useEffect(() => {
-    const loadUserPlan = async () => {
-      const { data } = await supabase.from("profiles").select("plan, plan_type, credits").single();
-      if (data) {
-        setUserPlan((data.plan || data.plan_type || "free").toLowerCase());
-        setUserCredits(data.credits || 0);
+    const loadUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from("profiles").select("plan, plan_type, credits").eq('id', user.id).single();
+        if (data) {
+          setUserPlan((data.plan || data.plan_type || "free").toLowerCase());
+          setUserCredits(data.credits || 0);
+        }
       }
     };
-    loadUserPlan();
+    loadUserData();
   }, []);
 
   const handleDarkMode = (v: boolean) => {
@@ -69,8 +72,10 @@ const Settings = () => {
     toast({ title: `Dark mode ${v ? "enabled" : "disabled"}` });
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
+    // Clear local storage and sign out
     localStorage.clear();
+    await supabase.auth.signOut();
     toast({ title: "Account deleted" });
     navigate("/");
   };
@@ -87,7 +92,6 @@ const Settings = () => {
             {[
               { key: "email_notifications", label: "Email notifications" },
               { key: "product_updates", label: "Product updates" },
-              { key: "marketing_tips", label: "Marketing tips" },
             ].map(item => (
               <div key={item.key} className="flex items-center justify-between">
                 <Label>{item.label}</Label>
@@ -109,10 +113,6 @@ const Settings = () => {
               <Label>Auto-save drafts</Label>
               <Switch checked={!!prefs.auto_save} onCheckedChange={() => toggle("auto_save")} />
             </div>
-            <div className="flex items-center justify-between">
-              <Label>Show tooltips</Label>
-              <Switch checked={!!prefs.show_tooltips} onCheckedChange={() => toggle("show_tooltips")} />
-            </div>
           </CardContent>
         </Card>
 
@@ -129,11 +129,11 @@ const Settings = () => {
                   {userPlan === "free" ? "3 AI generations per day" : `${userCredits} credits remaining`}
                 </p>
               </div>
-              <Badge className="gradient-primary text-primary-foreground">Current</Badge>
+              <Badge className="bg-primary text-primary-foreground">Current</Badge>
             </div>
             <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full gradient-primary text-primary-foreground">Upgrade Plan</Button>
+                <Button className="w-full gradient-primary">Upgrade Plan</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Choose a Plan</DialogTitle></DialogHeader>
@@ -152,9 +152,6 @@ const Settings = () => {
                     </div>
                   ))}
                 </div>
-                <DialogFooter>
-                  <DialogClose asChild><Button variant="outline">Close</Button></DialogClose>
-                </DialogFooter>
               </DialogContent>
             </Dialog>
           </CardContent>
@@ -166,13 +163,13 @@ const Settings = () => {
             <CardTitle className="text-base text-destructive flex items-center gap-2"><Trash2 className="w-4 h-4" /> Danger Zone</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">Once you delete your account, there is no going back.</p>
+            <p className="text-sm text-muted-foreground mb-4">Deleting your account is permanent.</p>
             <AlertDialog>
               <AlertDialogTrigger asChild><Button variant="destructive">Delete Account</Button></AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogTitle>This will permanently delete your account and all data.</AlertDialogTitle>
+                  <AlertDialogDescription>All your products and data will be gone forever.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
