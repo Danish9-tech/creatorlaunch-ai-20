@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Sparkles, Loader2, Tag, DollarSign, Users, Search, Shield, Upload } from "lucide-react";
+import { FileText, Sparkles, Loader2, Tag, Search, Shield, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -18,7 +18,7 @@ const ListingsGenerator = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  // Get user session using the standard client to avoid build errors
+  // Get user session using the standard client to ensure stability on Vercel
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -55,7 +55,7 @@ const ListingsGenerator = () => {
 
     setIsPublishing(true);
     try {
-      // 1. Fetch the token from your connections table where it was saved via Marketplace Connect
+      // 1. Fetch the token from marketplace_connections saved via Marketplace Connect page
       const { data: connection, error: connError } = await supabase
         .from('marketplace_connections')
         .select('settings')
@@ -75,13 +75,13 @@ const ListingsGenerator = () => {
         return;
       }
 
-      // 2. Call the Edge Function to handle the actual Gumroad API request
-      const { data, error: publishError } = await supabase.functions.invoke("gumroad-publish", {
+      // 2. Call the Edge Function using the name verified in your dashboard
+      const { data, error: publishError } = await supabase.functions.invoke("publish-gumroad-product", {
         body: {
           access_token: gumroadKey,
           name: result.title,
           description: result.description,
-          price: 0, // Defaulting to 0 for draft creation
+          price: 0,
         },
       });
 
@@ -89,7 +89,7 @@ const ListingsGenerator = () => {
 
       toast({ title: "Success!", description: "Draft created successfully on Gumroad!" });
 
-      // 3. Open the Gumroad edit page in a new tab if a product ID was returned
+      // 3. Open the product edit page if ID is returned
       if (data?.product?.id) {
         window.open(`https://gumroad.com/products/${data.product.id}/edit`, '_blank');
       }
@@ -182,23 +182,6 @@ const ListingsGenerator = () => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Tag className="w-4 h-4" />Tags
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {result.tags?.split(",").map((tag: string, i: number) => (
-                      <span key={i} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                        {tag.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
               <div className="grid md:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader>
@@ -217,11 +200,17 @@ const ListingsGenerator = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
-                      <Users className="w-4 h-4" />Target Audience
+                      <Tag className="w-4 h-4" />Tags
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm">{result.targetAudience}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {result.tags?.split(",").map((tag: string, i: number) => (
+                        <span key={i} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                          {tag.trim()}
+                        </span>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
