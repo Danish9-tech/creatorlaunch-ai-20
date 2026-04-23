@@ -90,6 +90,23 @@ const MarketplaceConnect = () => {
     setIsProcessing(null);
   };
 
+  const handleDisconnect = async (marketplaceId: string) => {
+    if (!userId) return;
+    setIsProcessing(marketplaceId);
+    const { error } = await supabase
+      .from('marketplace_connections')
+      .delete()
+      .eq('user_id', userId)
+      .eq('marketplace_id', marketplaceId);
+    if (error) {
+      toast({ title: "Disconnect failed", description: error.message, variant: "destructive" });
+    } else {
+      setConnections(prev => prev.filter(c => c.marketplace_id !== marketplaceId));
+      toast({ title: "Disconnected" });
+    }
+    setIsProcessing(null);
+  };
+
   const isConnected = (id: string) => connections.some(c => c.marketplace_id === id);
 
   return (
@@ -126,7 +143,18 @@ const MarketplaceConnect = () => {
                     </DialogContent>
                   </Dialog>
                 ) : (
-                  <Button variant="outline" className="w-full">Disconnect</Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleDisconnect(mp.id)}
+                    disabled={isProcessing === mp.id}
+                  >
+                    {isProcessing === mp.id ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Disconnecting...</>
+                    ) : (
+                      "Disconnect"
+                    )}
+                  </Button>
                 )}
               </CardContent>
             </Card>
