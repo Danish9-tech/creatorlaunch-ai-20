@@ -38,7 +38,6 @@ const toolItems = [
   { title: "License Generator", url: "/license-generator", icon: Shield },
   { title: "Affiliate Builder", url: "/affiliate-builder", icon: Users },
   { title: "Listing Translator", url: "/listing-translator", icon: Languages },
-  { title: "Export Tools", url: "/export-tools", icon: Download },
 ];
 
 const utilNav = [
