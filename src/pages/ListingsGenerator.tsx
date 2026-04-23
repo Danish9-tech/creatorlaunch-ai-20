@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Sparkles, Loader2, Tag, DollarSign, Users, Search, Image, Shield, CheckSquare, Upload } from "lucide-react";
+import { FileText, Sparkles, Loader2, Tag, DollarSign, Users, Search, Shield, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -18,7 +18,7 @@ const ListingsGenerator = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  // Get user session using the standard client
+  // Get user session using the standard client to avoid build errors
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -55,7 +55,7 @@ const ListingsGenerator = () => {
 
     setIsPublishing(true);
     try {
-      // Look in 'marketplace_connections' for the linked account
+      // 1. Fetch the token from your connections table where it was saved via Marketplace Connect
       const { data: connection, error: connError } = await supabase
         .from('marketplace_connections')
         .select('settings')
@@ -75,25 +75,22 @@ const ListingsGenerator = () => {
         return;
       }
 
-      // Create draft product on Gumroad
-      const response = await fetch('/api/gumroad/create-draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // 2. Call the Edge Function to handle the actual Gumroad API request
+      const { data, error: publishError } = await supabase.functions.invoke("gumroad-publish", {
+        body: {
           access_token: gumroadKey,
           name: result.title,
           description: result.description,
-          price: 0,
-          published: false,
-        }),
+          price: 0, // Defaulting to 0 for draft creation
+        },
       });
 
-      if (!response.ok) throw new Error('Failed to create Gumroad draft');
+      if (publishError) throw new Error(publishError.message);
 
-      const data = await response.json();
       toast({ title: "Success!", description: "Draft created successfully on Gumroad!" });
 
-      if (data.product?.id) {
+      // 3. Open the Gumroad edit page in a new tab if a product ID was returned
+      if (data?.product?.id) {
         window.open(`https://gumroad.com/products/${data.product.id}/edit`, '_blank');
       }
     } catch (error: any) {
@@ -113,7 +110,11 @@ const ListingsGenerator = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Product Name</Label>
-                  <Input placeholder="e.g., n8n Automation Templates Bundle" value={product} onChange={(e) => setProduct(e.target.value)} />
+                  <Input 
+                    placeholder="e.g., n8n Automation Templates Bundle" 
+                    value={product} 
+                    onChange={(e) => setProduct(e.target.value)} 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Platform</Label>
@@ -128,8 +129,16 @@ const ListingsGenerator = () => {
                 </div>
               </div>
               <div className="space-y-3">
-                <Button className="w-full gradient-primary text-primary-foreground btn-animate" onClick={handleGenerate} disabled={loading}>
-                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate Complete Listing</>}
+                <Button 
+                  className="w-full gradient-primary text-primary-foreground btn-animate" 
+                  onClick={handleGenerate} 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                  ) : (
+                    <><Sparkles className="w-4 h-4 mr-2" /> Generate Complete Listing</>
+                  )}
                 </Button>
 
                 {result && (
@@ -152,21 +161,39 @@ const ListingsGenerator = () => {
           {result && (
             <div className="space-y-4">
               <Card className="border-primary">
-                <CardHeader><CardTitle className="flex items-center gap-2 text-primary"><FileText className="w-5 h-5" />SEO Title</CardTitle></CardHeader>
-                <CardContent><p className="font-bold text-xl">{result.title}</p></CardContent>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-primary">
+                    <FileText className="w-5 h-5" />SEO Title
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="font-bold text-xl">{result.title}</p>
+                </CardContent>
               </Card>
 
               <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4" />Full Description</CardTitle></CardHeader>
-                <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{result.description}</p></CardContent>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />Full Description
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{result.description}</p>
+                </CardContent>
               </Card>
 
               <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><Tag className="w-4 h-4" />Tags</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Tag className="w-4 h-4" />Tags
+                  </CardTitle>
+                </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {result.tags?.split(",").map((tag: string, i: number) => (
-                      <span key={i} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">{tag.trim()}</span>
+                      <span key={i} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                        {tag.trim()}
+                      </span>
                     ))}
                   </div>
                 </CardContent>
@@ -174,7 +201,11 @@ const ListingsGenerator = () => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Search className="w-4 h-4" />SEO Keywords</CardTitle></CardHeader>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Search className="w-4 h-4" />SEO Keywords
+                    </CardTitle>
+                  </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {result.seoKeywords?.split(",").map((kw: string, i: number) => (
@@ -184,14 +215,26 @@ const ListingsGenerator = () => {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Users className="w-4 h-4" />Target Audience</CardTitle></CardHeader>
-                  <CardContent><p className="text-sm">{result.targetAudience}</p></CardContent>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Users className="w-4 h-4" />Target Audience
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm">{result.targetAudience}</p>
+                  </CardContent>
                 </Card>
               </div>
 
               <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="w-4 h-4" />Policies</CardTitle></CardHeader>
-                <CardContent><p className="text-sm whitespace-pre-wrap">{result.policies}</p></CardContent>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-4 h-4" />Policies
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm whitespace-pre-wrap">{result.policies}</p>
+                </CardContent>
               </Card>
             </div>
           )}
